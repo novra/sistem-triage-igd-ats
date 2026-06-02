@@ -160,6 +160,7 @@ app.post("/api/triage/classify", async (req, res) => {
     const ruleResult = runRuleBasedTriage(record);
 
     let providerUsed = "Rule-Based";
+    let modelUsed = "Clinical Safety Rules v1";
     const selectedProvider = aiProvider || "gemini";
 
     // B. Default structure for fallback or rule-based safety
@@ -240,6 +241,7 @@ Tuliskan analisis medis Anda dalam Bahasa Indonesia yang formal. Output WAJIB be
       } else {
         try {
           const hfModel = "mistralai/Mistral-7B-Instruct-v0.3";
+          modelUsed = hfModel;
           const hfUrl = `https://api-inference.huggingface.co/models/${hfModel}`;
 
           console.log(`Sending request to Hugging Face Model: ${hfModel}...`);
@@ -285,6 +287,7 @@ Tuliskan analisis medis Anda dalam Bahasa Indonesia yang formal. Output WAJIB be
           if (parsed && typeof parsed.atsLevel === "number") {
             aiResult = parsed;
             providerUsed = "Hugging Face";
+            modelUsed = hfModel;
           } else {
             throw new Error("Hugging Face JSON parsed successfully, but missing expected properties");
           }
@@ -329,6 +332,7 @@ Tuliskan analisis medis Anda dalam Bahasa Indonesia yang formal. Output WAJIB be
               rekomendasiAwal: parsed.rekomendasiAwal || []
             };
             providerUsed = "Model Mandiri (Custom Endpoint)";
+            modelUsed = parsed.modelUsed || responseData.modelUsed || responseData.model || "Custom Endpoint";
           } else {
             throw new Error("Custom Model API returned data, but 'atsLevel' was not structured properly.");
           }
@@ -344,8 +348,9 @@ Tuliskan analisis medis Anda dalam Bahasa Indonesia yang formal. Output WAJIB be
         actionFailed = true;
       } else {
         try {
+          const geminiModel = "gemini-3.5-flash";
           const response = await ai.models.generateContent({
-            model: "gemini-3.5-flash",
+            model: geminiModel,
             contents: promptText,
             config: {
               systemInstruction: `Anda adalah pakar triase medis emergensi berlisensi di Indonesia. Analisis kasus triase seobjektif mungkin. Dahulukan keselamatan pasien. Berikan keluaran terstruktur sesuai format JSON schema yang diminta.`,
@@ -369,6 +374,7 @@ Tuliskan analisis medis Anda dalam Bahasa Indonesia yang formal. Output WAJIB be
           if (parsed.atsLevel) {
             aiResult = parsed;
             providerUsed = "Gemini";
+            modelUsed = geminiModel;
           } else {
             throw new Error("Gemini classification succeeded, but returned blank schema");
           }
@@ -382,6 +388,7 @@ Tuliskan analisis medis Anda dalam Bahasa Indonesia yang formal. Output WAJIB be
     // FALLBACK IF AI METHOD FAILED OR WAS UNCONFIGURED
     if (actionFailed) {
       providerUsed = "Rule-Based";
+      modelUsed = "Clinical Safety Rules v1";
       aiResult = {
         atsLevel: ruleResult.overrideLevel || 3,
         confidenceScore: 100,
@@ -412,7 +419,8 @@ Tuliskan analisis medis Anda dalam Bahasa Indonesia yang formal. Output WAJIB be
       emergencyIndicator: finalEmergency,
       alasanKlasifikasi: aiResult.alasanKlasifikasi || "Ditentukan berdasarkan kriteria fisiologis standar ATS.",
       rekomendasiAwal: aiResult.rekomendasiAwal || ["Siapkan ruang resusitasi", "Pasang jalur infus intravena"],
-      providerUsed: providerUsed
+      providerUsed: providerUsed,
+      modelUsed: modelUsed
     });
 
   } catch (error: any) {
@@ -815,6 +823,21 @@ app.post("/api/triage/records", (req, res) => {
 app.get("/api/triage/export", (req, res) => {
   try {
     const records = readRecords();
+    const resolveModelUsed = (r: any) => {
+      if (r.atsPrediction?.modelUsed) return r.atsPrediction.modelUsed;
+      switch (r.atsPrediction?.providerUsed) {
+        case "Gemini":
+          return "gemini-3.5-flash";
+        case "Hugging Face":
+          return "mistralai/Mistral-7B-Instruct-v0.3";
+        case "Model Mandiri (Custom Endpoint)":
+          return "Custom Endpoint";
+        case "Rule-Based":
+          return "Clinical Safety Rules v1";
+        default:
+          return "";
+      }
+    };
     
     // Prepare standardized structured features suited directly for NLP modeling
     const exportedData = records.map((r) => ({
@@ -854,6 +877,8 @@ app.get("/api/triage/export", (req, res) => {
       predicted_ats: r.atsPrediction?.atsLevel || 3,
       final_ats: r.atsFinal?.atsLevelFinal || r.atsPrediction?.atsLevel || 3,
       ai_confidence: r.atsPrediction?.confidenceScore || 0,
+      ai_provider_used: r.atsPrediction?.providerUsed || "",
+      ai_model_used: resolveModelUsed(r),
       is_emergency: r.atsPrediction?.emergencyIndicator ? 1 : 0,
       classification_reasoning: r.atsPrediction?.alasanKlasifikasi || "",
       nama_petugas: r.atsFinal?.namaPetugas || "",

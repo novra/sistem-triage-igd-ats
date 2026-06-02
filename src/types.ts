@@ -132,6 +132,7 @@ export interface TriageRecord {
     alasanKlasifikasi: string;
     rekomendasiAwal: string[];
     providerUsed?: string;
+    modelUsed?: string;
   };
   
   atsFinal?: {

@@ -126,6 +126,11 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
                   VIA {prediction.providerUsed}
                 </span>
               )}
+              {prediction.modelUsed && (
+                <span className="px-1.5 py-0.5 bg-black/25 rounded text-[9px] font-black tracking-widest">
+                  MODEL {prediction.modelUsed}
+                </span>
+              )}
             </span>
             <h2 className="text-2xl font-black leading-tight">
               {levelDetails.name}
