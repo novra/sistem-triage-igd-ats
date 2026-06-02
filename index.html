@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Highly robust safeguard against sandbox environments with read-only window.fetch getter
+      (function() {
+        try {
+          if (typeof window !== 'undefined' && window.fetch) {
+            let originalFetch = window.fetch;
+            
+            // Define standard getter/setter helper
+            function applyFetchAccessor(target) {
+              Object.defineProperty(target, 'fetch', {
+                get() {
+                  return originalFetch;
+                },
+                set(val) {
+                  originalFetch = val;
+                },
+                configurable: true,
+                enumerable: true
+              });
+            }
+
+            // 1. Try defining on Window.prototype (regular prototype object, not a proxy)
+            if (typeof Window !== 'undefined' && Window.prototype) {
+              try {
+                applyFetchAccessor(Window.prototype);
+              } catch (eProto) {
+                console.warn("Safeguard: Redefining fetch on Window.prototype failed", eProto);
+              }
+            }
+
+            // 2. Try defining on window instance
+            try {
+              applyFetchAccessor(window);
+            } catch (eWindow) {
+              console.warn("Safeguard: Redefining fetch on window instance failed", eWindow);
+            }
+
+            // 3. Try defining on globalThis
+            if (typeof globalThis !== 'undefined' && globalThis !== window) {
+              try {
+                applyFetchAccessor(globalThis);
+              } catch (eGlobal) {}
+            }
+          }
+        } catch (e) {
+          console.error("Safeguard setup failed completely", e);
+        }
+      })();
+    </script>
+    <title>My Google AI Studio App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

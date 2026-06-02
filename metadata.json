@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Triage IGD ATS",
+  "description": "Sistem triase IGD berbasis Australasian Triage Scale (ATS) dengan dukungan AI untuk menunjang keputusan klinis perawat triase di Indonesia.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
