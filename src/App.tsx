@@ -504,7 +504,6 @@ export default function App() {
 
   // Critical warnings indicators shown on absolute sticky header for instant ER navigation
   const sbp = Number(form.vitalSign?.tekananDarahSistolik) || 0;
-  const rr = Number(form.vitalSign?.respiratoryRate) || 0;
   const spo2 = Number(form.vitalSign?.saturasiOksigen) || 0;
   const gcsVal = ((form.vitalSign?.gcs?.eye ?? 4) + (form.vitalSign?.gcs?.verbal ?? 5) + (form.vitalSign?.gcs?.motor ?? 6));
   const isHypoxic = spo2 > 0 && spo2 < 90;
@@ -522,6 +521,8 @@ export default function App() {
   const liveRecommendations = livePrediction?.rekomendasiAwal?.length
     ? livePrediction.rekomendasiAwal.slice(0, 3)
     : ["Lengkapi keluhan, tanda vital, dan pemeriksaan fisik untuk menjalankan analisis ATS."];
+  const rrDisplay = form.vitalSign?.respiratoryRate ?? "N/A";
+  const isRrCritical = typeof rrDisplay === "number" && (rrDisplay === 0 || rrDisplay < 8 || rrDisplay > 30);
 
   return (
     <div className={`min-h-screen transition-colors ${darkMode ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}>
@@ -933,7 +934,7 @@ export default function App() {
               <div className="grid grid-cols-2 gap-2 text-center text-xs text-slate-700 dark:text-slate-200">
                 <div className="p-1.5 bg-white dark:bg-slate-900 rounded-lg shadow-3xs">
                   <span className="text-[9px] block text-slate-400 font-bold">Respirasi Rate</span>
-                  <span className={`font-black ${rr > 30 || (rr > 0 && rr < 8) ? "text-rose-600" : "text-emerald-500"}`}>{form.vitalSign?.respiratoryRate || "N/A"}/m</span>
+                  <span className={`font-black ${isRrCritical ? "text-rose-600" : "text-emerald-500"}`}>{rrDisplay}/m</span>
                 </div>
                 <div className="p-1.5 bg-white dark:bg-slate-900 rounded-lg shadow-3xs">
                   <span className="text-[9px] block text-slate-400 font-bold">Saturasi</span>
