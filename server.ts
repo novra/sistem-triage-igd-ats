@@ -151,7 +151,7 @@ app.get("/api/health", (req, res) => {
 // 2. ATS CLASSIFY WITH AI (GEMINI / HUGGING FACE / RULE-BASED FALLBACK)
 app.post("/api/triage/classify", async (req, res) => {
   try {
-    const { aiProvider, ...record } = req.body;
+    const { aiProvider, aiModel, ...record } = req.body;
     if (!record || !record.vitalSign) {
       return res.status(400).json({ error: "Data triage tidak lengkap" });
     }
@@ -240,9 +240,13 @@ Tuliskan analisis medis Anda dalam Bahasa Indonesia yang formal. Output WAJIB be
         actionFailed = true;
       } else {
         try {
-          const hfModel = "mistralai/Mistral-7B-Instruct-v0.3";
+          const hfModels: Record<string, string> = {
+            "openai-oss": "openai/gpt-oss-20b:fastest",
+            "deepseek": "deepseek-ai/DeepSeek-V4-Flash:fastest",
+          };
+          const hfModel = hfModels[aiModel] || hfModels["openai-oss"];
           modelUsed = hfModel;
-          const hfUrl = `https://api-inference.huggingface.co/models/${hfModel}`;
+          const hfUrl = "https://router.huggingface.co/v1/chat/completions";
 
           console.log(`Sending request to Hugging Face Model: ${hfModel}...`);
           const hfResponse = await fetch(hfUrl, {
@@ -252,22 +256,35 @@ Tuliskan analisis medis Anda dalam Bahasa Indonesia yang formal. Output WAJIB be
               "Authorization": `Bearer ${hfToken}`
             },
             body: JSON.stringify({
-              inputs: `<s>[INST] ${promptText} \nRESPONSE ONLY JSON: [/INST]`,
-              parameters: {
-                max_new_tokens: 1000,
-                temperature: 0.1,
-                return_full_text: false
-              }
+              model: hfModel,
+              messages: [
+                {
+                  role: "system",
+                  content: "Anda adalah pakar triase medis emergensi. Balas hanya JSON valid tanpa markdown."
+                },
+                {
+                  role: "user",
+                  content: `${promptText}\n\nRESPONSE ONLY JSON. Jangan sertakan markdown, penjelasan tambahan, atau teks di luar JSON.`
+                }
+              ],
+              max_tokens: 1200,
+              temperature: 0.1,
+              stream: false
             })
           });
 
           if (!hfResponse.ok) {
-            throw new Error(`Hugging Face API returned status ${hfResponse.status}`);
+            const errorText = await hfResponse.text().catch(() => "");
+            throw new Error(`Hugging Face API returned status ${hfResponse.status}: ${errorText.slice(0, 500)}`);
           }
 
           const responseData = await hfResponse.json();
           let generatedText = "";
-          if (Array.isArray(responseData) && responseData[0]?.generated_text) {
+          if (responseData?.choices?.[0]?.message?.content) {
+            generatedText = responseData.choices[0].message.content;
+          } else if (responseData?.choices?.[0]?.message?.reasoning) {
+            generatedText = responseData.choices[0].message.reasoning;
+          } else if (Array.isArray(responseData) && responseData[0]?.generated_text) {
             generatedText = responseData[0].generated_text;
           } else if (responseData?.generated_text) {
             generatedText = responseData.generated_text;
@@ -287,7 +304,7 @@ Tuliskan analisis medis Anda dalam Bahasa Indonesia yang formal. Output WAJIB be
           if (parsed && typeof parsed.atsLevel === "number") {
             aiResult = parsed;
             providerUsed = "Hugging Face";
-            modelUsed = hfModel;
+            modelUsed = responseData?.model || hfModel;
           } else {
             throw new Error("Hugging Face JSON parsed successfully, but missing expected properties");
           }

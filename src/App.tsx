@@ -277,10 +277,18 @@ export default function App() {
   const [aiProvider, setAiProvider] = useState<string>(() => {
     return localStorage.getItem("ats_ai_provider") || "gemini";
   });
+  const [aiModel, setAiModel] = useState<string>(() => {
+    return localStorage.getItem("ats_ai_model") || "openai-oss";
+  });
 
   const handleSetAiProvider = (provider: string) => {
     setAiProvider(provider);
     localStorage.setItem("ats_ai_provider", provider);
+  };
+
+  const handleSetAiModel = (model: string) => {
+    setAiModel(model);
+    localStorage.setItem("ats_ai_model", model);
   };
 
   // Load cache on start
@@ -377,7 +385,8 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          aiProvider
+          aiProvider,
+          aiModel
         })
       });
 
@@ -638,6 +647,41 @@ export default function App() {
                 </button>
               </div>
             </div>
+            {aiProvider === "huggingface" && (
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Model HF Router
+                </span>
+                <div className="flex bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 w-fit flex-wrap gap-1 font-sans">
+                  <button
+                    id="hf-model-openai"
+                    type="button"
+                    onClick={() => handleSetAiModel("openai-oss")}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      aiModel === "openai-oss"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400"
+                    }`}
+                  >
+                    <Wand2 size={13} />
+                    <span>OpenAI OSS</span>
+                  </button>
+                  <button
+                    id="hf-model-deepseek"
+                    type="button"
+                    onClick={() => handleSetAiModel("deepseek")}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      aiModel === "deepseek"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400"
+                    }`}
+                  >
+                    <Activity size={13} />
+                    <span>DeepSeek</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <ATSFlowDiagram />
