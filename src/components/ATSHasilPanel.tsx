@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { TriageRecord, ATS_LEVEL_DETAILS } from "../types";
-import { ShieldAlert, AlertCircle, Save, HelpCircle, Activity, Undo, FileText } from "lucide-react";
+import { ShieldAlert, AlertCircle, Save, Activity, FileText, CheckCircle2, UserCheck } from "lucide-react";
 import { generateIGDReportPDF } from "../utils/pdfGenerator";
 
 interface ATSHasilPanelProps {
@@ -77,6 +77,10 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
   const baseLevel = prediction.atsLevel as 1 | 2 | 3 | 4 | 5;
   const currentLevel = (overrideLevel !== "" ? Number(overrideLevel) : baseLevel) as 1 | 2 | 3 | 4 | 5;
   const levelDetails = ATS_LEVEL_DETAILS[currentLevel];
+  const predictionDetails = ATS_LEVEL_DETAILS[baseLevel];
+  const hasOverride = overrideLevel !== "" || Boolean(data.atsFinal?.atsLevelOverride);
+  const validatorName = namaPetugas.trim() || data.atsFinal?.namaPetugas || "Belum divalidasi";
+  const validatorRole = jabatanPetugas || data.atsFinal?.jabatanPetugas || "Belum ditentukan";
 
   const handleTriggerSave = () => {
     if (!namaPetugas.trim()) {
@@ -120,7 +124,7 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <span className="text-[10px] uppercase font-bold tracking-wider opacity-90 font-mono flex items-center gap-1.5 flex-wrap">
-              <span>PREDIKSI & KLASIFIKASI ATS</span>
+              <span>HASIL ATS AKTIF</span>
               {prediction.providerUsed && (
                 <span className="px-1.5 py-0.5 bg-black/30 rounded text-[9px] font-black tracking-widest text-yellow-300">
                   VIA {prediction.providerUsed}
@@ -154,6 +158,66 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
           <div className="bg-white/10 p-2.5 rounded-xl border border-white/5">
             <span className="opacity-75 block text-[10px] font-bold">Indikator Emergency</span>
             <span className="font-extrabold text-sm">{prediction.emergencyIndicator ? "🚨 Gawat Darurat" : "Stabil / Low Risk"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-3">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Prediksi ATS Awal
+            </h3>
+            <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
+              {prediction.providerUsed || "Rule-Based"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-lg font-black text-slate-800">{predictionDetails.name}</p>
+              <p className="text-xs font-bold text-slate-500">{predictionDetails.timeLimit}</p>
+            </div>
+            <div className="text-right">
+              <span className="block text-[10px] font-bold text-slate-400 uppercase">Confidence</span>
+              <span className="text-xl font-black text-slate-800">{prediction.confidenceScore}%</span>
+            </div>
+          </div>
+          <div className="text-[11px] text-slate-500 font-medium space-y-1">
+            <p><strong className="text-slate-700">Model:</strong> {prediction.modelUsed || "Clinical Safety Rules v1"}</p>
+            <p><strong className="text-slate-700">Emergency:</strong> {prediction.emergencyIndicator ? "Ya" : "Tidak"}</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-3">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Hasil Final / Override
+            </h3>
+            <span className={`text-[10px] font-black px-2 py-1 rounded-lg border ${
+              hasOverride ? "bg-amber-50 text-amber-700 border-amber-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"
+            }`}>
+              {hasOverride ? "Override Klinis" : "Sesuai Prediksi"}
+            </span>
+          </div>
+          <div className="flex items-start gap-3">
+            <CheckCircle2 size={18} className={hasOverride ? "text-amber-600 shrink-0 mt-0.5" : "text-emerald-600 shrink-0 mt-0.5"} />
+            <div>
+              <p className="text-lg font-black text-slate-800">{levelDetails.name}</p>
+              <p className="text-xs font-bold text-slate-500">{levelDetails.timeLimit}</p>
+              {hasOverride && (
+                <p className="mt-2 text-[11px] leading-relaxed text-slate-600 font-medium">
+                  {reasonOverride || data.atsFinal?.alasanOverride || "Alasan override belum diisi."}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-100 p-3">
+            <UserCheck size={16} className="text-slate-500 shrink-0" />
+            <div className="min-w-0">
+              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Validator</span>
+              <span className="block text-xs font-black text-slate-800 truncate">{validatorName}</span>
+              <span className="block text-[11px] font-semibold text-slate-500 truncate">{validatorRole}</span>
+            </div>
           </div>
         </div>
       </div>

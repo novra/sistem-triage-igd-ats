@@ -504,10 +504,24 @@ export default function App() {
 
   // Critical warnings indicators shown on absolute sticky header for instant ER navigation
   const sbp = Number(form.vitalSign?.tekananDarahSistolik) || 0;
+  const rr = Number(form.vitalSign?.respiratoryRate) || 0;
   const spo2 = Number(form.vitalSign?.saturasiOksigen) || 0;
   const gcsVal = ((form.vitalSign?.gcs?.eye ?? 4) + (form.vitalSign?.gcs?.verbal ?? 5) + (form.vitalSign?.gcs?.motor ?? 6));
   const isHypoxic = spo2 > 0 && spo2 < 90;
   const isComa = gcsVal <= 8;
+  const livePrediction = form.atsPrediction;
+  const liveFinalLevel = (form.atsFinal?.atsLevelFinal || form.atsFinal?.atsLevelOverride || livePrediction?.atsLevel) as 1 | 2 | 3 | 4 | 5 | undefined;
+  const liveLevelDetails = liveFinalLevel ? ATS_LEVEL_DETAILS[liveFinalLevel] : null;
+  const liveHasOverride = Boolean(form.atsFinal?.atsLevelOverride);
+  const liveProvider = livePrediction?.providerUsed || (livePrediction ? "Rule-Based" : "Belum dianalisis");
+  const liveCondition = livePrediction
+    ? livePrediction.emergencyIndicator
+      ? "Gawat darurat / perlu prioritas segera"
+      : "Stabil relatif, tetap monitor berkala"
+    : "Menunggu analisis ATS";
+  const liveRecommendations = livePrediction?.rekomendasiAwal?.length
+    ? livePrediction.rekomendasiAwal.slice(0, 3)
+    : ["Lengkapi keluhan, tanda vital, dan pemeriksaan fisik untuk menjalankan analisis ATS."];
 
   return (
     <div className={`min-h-screen transition-colors ${darkMode ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}>
@@ -867,9 +881,50 @@ export default function App() {
                 </div>
                 <div className="flex justify-between border-b pb-1 dark:border-slate-800">
                   <span className="text-slate-400">Keluhan</span>
-                  <span className="text-rose-600 font-bold">{form.chiefComplaint}</span>
+                  <span className="text-rose-600 font-bold truncate max-w-[150px] text-right">
+                    {form.chiefComplaintCustom || form.chiefComplaint || "Belum diisi"}
+                  </span>
                 </div>
               </div>
+            </div>
+
+            <div className={`p-3 rounded-xl border space-y-3 ${
+              liveLevelDetails
+                ? "bg-indigo-50/70 border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900/40"
+                : "bg-slate-50 border-slate-200 dark:bg-slate-950/40 dark:border-slate-800"
+            }`}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+                    Kondisi Pasien & ATS
+                  </span>
+                  <p className="mt-1 text-sm font-black text-slate-800 dark:text-slate-100">
+                    {liveLevelDetails ? liveLevelDetails.name : "ATS belum tersedia"}
+                  </p>
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    {liveLevelDetails ? liveLevelDetails.timeLimit : "Klik Analisis ATS dengan AI"}
+                  </p>
+                </div>
+                <span className={`px-2 py-1 rounded-lg text-[9px] font-black border shrink-0 ${
+                  liveHasOverride
+                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                    : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                }`}>
+                  {liveHasOverride ? "OVERRIDE" : liveProvider}
+                </span>
+              </div>
+              <div className="rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-2.5">
+                <span className="text-[9px] block text-slate-400 font-bold uppercase tracking-wider">Gambaran Kondisi</span>
+                <p className="text-[11px] leading-relaxed font-semibold text-slate-700 dark:text-slate-200">
+                  {liveCondition}
+                </p>
+              </div>
+              {form.atsFinal?.namaPetugas && (
+                <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                  Validator: <strong className="text-slate-700 dark:text-slate-200">{form.atsFinal.namaPetugas}</strong>
+                  {form.atsFinal.jabatanPetugas ? ` (${form.atsFinal.jabatanPetugas})` : ""}
+                </div>
+              )}
             </div>
 
             {/* Quick GCS reference summary */}
@@ -878,13 +933,25 @@ export default function App() {
               <div className="grid grid-cols-2 gap-2 text-center text-xs text-slate-700 dark:text-slate-200">
                 <div className="p-1.5 bg-white dark:bg-slate-900 rounded-lg shadow-3xs">
                   <span className="text-[9px] block text-slate-400 font-bold">Respirasi Rate</span>
-                  <span className={`font-black ${sbp < 90 && sbp > 0 ? "text-rose-600" : "text-emerald-500"}`}>{form.vitalSign?.respiratoryRate || "N/A"}/m</span>
+                  <span className={`font-black ${rr > 30 || (rr > 0 && rr < 8) ? "text-rose-600" : "text-emerald-500"}`}>{form.vitalSign?.respiratoryRate || "N/A"}/m</span>
                 </div>
                 <div className="p-1.5 bg-white dark:bg-slate-900 rounded-lg shadow-3xs">
                   <span className="text-[9px] block text-slate-400 font-bold">Saturasi</span>
                   <span className={`font-black ${spo2 < 90 && spo2 > 0 ? "text-rose-600" : "text-emerald-500"}`}>{form.vitalSign?.saturasiOksigen || "N/A"}%</span>
                 </div>
               </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Rekomendasi Tindakan</span>
+              <ul className="space-y-1.5">
+                {liveRecommendations.map((rec, index) => (
+                  <li key={index} className="flex items-start gap-2 text-[11px] font-semibold leading-relaxed text-slate-700 dark:text-slate-200">
+                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             {/* System Guideline quick reference sheet */}
