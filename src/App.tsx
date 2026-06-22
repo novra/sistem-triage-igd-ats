@@ -521,8 +521,11 @@ export default function App() {
   const liveRecommendations = livePrediction?.rekomendasiAwal?.length
     ? livePrediction.rekomendasiAwal.slice(0, 3)
     : ["Lengkapi keluhan, tanda vital, dan pemeriksaan fisik untuk menjalankan analisis ATS."];
-  const rrDisplay = form.vitalSign?.respiratoryRate ?? "N/A";
-  const isRrCritical = typeof rrDisplay === "number" && (rrDisplay === 0 || rrDisplay < 8 || rrDisplay > 30);
+  const rrValue = form.vitalSign?.respiratoryRate;
+  const rrDisplay = typeof rrValue === "number" ? `${rrValue}/m` : "Belum diisi";
+  const isRrCritical = typeof rrValue === "number" && (rrValue === 0 || rrValue < 8 || rrValue > 30);
+  const spo2Value = form.vitalSign?.saturasiOksigen;
+  const spo2Display = typeof spo2Value === "number" ? `${spo2Value}%` : "Belum diisi";
 
   return (
     <div className={`min-h-screen transition-colors ${darkMode ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}>
@@ -934,11 +937,11 @@ export default function App() {
               <div className="grid grid-cols-2 gap-2 text-center text-xs text-slate-700 dark:text-slate-200">
                 <div className="p-1.5 bg-white dark:bg-slate-900 rounded-lg shadow-3xs">
                   <span className="text-[9px] block text-slate-400 font-bold">Respirasi Rate</span>
-                  <span className={`font-black ${isRrCritical ? "text-rose-600" : "text-emerald-500"}`}>{rrDisplay}/m</span>
+                  <span className={`font-black ${isRrCritical ? "text-rose-600" : "text-emerald-500"}`}>{rrDisplay}</span>
                 </div>
                 <div className="p-1.5 bg-white dark:bg-slate-900 rounded-lg shadow-3xs">
                   <span className="text-[9px] block text-slate-400 font-bold">Saturasi</span>
-                  <span className={`font-black ${spo2 < 90 && spo2 > 0 ? "text-rose-600" : "text-emerald-500"}`}>{form.vitalSign?.saturasiOksigen || "N/A"}%</span>
+                  <span className={`font-black ${spo2 < 90 && spo2 > 0 ? "text-rose-600" : "text-emerald-500"}`}>{spo2Display}</span>
                 </div>
               </div>
             </div>

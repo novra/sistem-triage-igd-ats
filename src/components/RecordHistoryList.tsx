@@ -5,10 +5,12 @@ import {
   Download,
   Edit3,
   Eye,
+  FileText,
   FileJson,
   Search,
   Trash2,
 } from "lucide-react";
+import { generateIGDReportPDF } from "../utils/pdfGenerator";
 
 interface RecordHistoryListProps {
   records: TriageRecord[];
@@ -151,10 +153,10 @@ export default function RecordHistoryList({
       "Nyeri Menjalar",
       "Level ATS Prediksi AI",
       "Skor Keyakinan AI (%)",
-      "Provider AI",
+      "Penyedia Analisis",
       "Jenis Model AI",
-      "Emergency Indicator",
-      "Warning Conditions",
+      "Indikator Kegawatdaruratan",
+      "Tanda Bahaya",
       "Alasan Klasifikasi AI",
       "Rekomendasi Awal",
       "Level ATS Final",
@@ -254,7 +256,7 @@ export default function RecordHistoryList({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `Data_Ekspor_Triage_ATS_${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute("download", `Data_Ekspor_Triase_ATS_${new Date().toISOString().split("T")[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -264,7 +266,7 @@ export default function RecordHistoryList({
     <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs space-y-4" id="records-history-section">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div>
-          <h2 className="text-md font-bold text-slate-800">Daftar Rekam Triage IGD</h2>
+          <h2 className="text-md font-bold text-slate-800">Daftar Rekam Triase IGD</h2>
           <p className="text-xs text-slate-400">
             Log database pasien, hasil ATS, override klinis, validator, dan audit penyimpanan
           </p>
@@ -307,7 +309,7 @@ export default function RecordHistoryList({
         <table className="w-full text-left text-xs text-slate-600">
           <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase font-bold border-b border-slate-100">
             <tr>
-              <th className="px-4 py-3">Waktu Triage</th>
+              <th className="px-4 py-3">Waktu Triase</th>
               <th className="px-4 py-3">No. RM</th>
               <th className="px-4 py-3">Pasien</th>
               <th className="px-4 py-3">Keluhan Utama</th>
@@ -404,6 +406,15 @@ export default function RecordHistoryList({
                             {isExpanded ? <ChevronUp size={15} /> : <Eye size={15} />}
                           </button>
                           <button
+                            id={`btn-pdf-rec-${record.id}`}
+                            type="button"
+                            onClick={() => generateIGDReportPDF(record)}
+                            className="p-1 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                            title="Cetak PDF"
+                          >
+                            <FileText size={15} />
+                          </button>
+                          <button
                             id={`btn-edit-rec-${record.id}`}
                             onClick={() => onSelectRecord(record)}
                             className="p-1 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
@@ -498,11 +509,11 @@ export default function RecordHistoryList({
                             <DetailSection title="Analisis ATS AI">
                               <dl className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <DetailItem label="ATS Prediksi" value={record.atsPrediction?.atsLevel ? `ATS ${record.atsPrediction.atsLevel}` : "-"} />
-                                <DetailItem label="Confidence" value={record.atsPrediction?.confidenceScore !== undefined ? `${record.atsPrediction.confidenceScore}%` : "-"} />
-                                <DetailItem label="Provider" value={record.atsPrediction?.providerUsed} />
+                                <DetailItem label="Skor Keyakinan" value={record.atsPrediction?.confidenceScore !== undefined ? `${record.atsPrediction.confidenceScore}%` : "-"} />
+                                <DetailItem label="Penyedia Analisis" value={record.atsPrediction?.providerUsed} />
                                 <DetailItem label="Jenis Model" value={getModelUsed(record)} />
-                                <DetailItem label="Emergency Indicator" value={record.atsPrediction?.emergencyIndicator ? "Ya" : "Tidak"} />
-                                <DetailItem label="Warning Conditions" value={joinList(record.atsPrediction?.warningConditions)} />
+                                <DetailItem label="Indikator Kegawatdaruratan" value={record.atsPrediction?.emergencyIndicator ? "Ya" : "Tidak"} />
+                                <DetailItem label="Tanda Bahaya" value={joinList(record.atsPrediction?.warningConditions)} />
                                 <DetailItem label="Alasan Klasifikasi" value={record.atsPrediction?.alasanKlasifikasi} />
                                 <DetailItem label="Rekomendasi Awal" value={joinList(record.atsPrediction?.rekomendasiAwal)} />
                               </dl>

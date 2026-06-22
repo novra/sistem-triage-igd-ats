@@ -11,12 +11,17 @@ export function generateIGDReportPDF(data: TriageRecord) {
   const baseLevel = data.atsPrediction?.atsLevel || 3;
   const currentLevel = (data.atsFinal?.atsLevelOverride || baseLevel) as 1 | 2 | 3 | 4 | 5;
   const levelDetails = ATS_LEVEL_DETAILS[currentLevel];
+  const finalLevel = (data.atsFinal?.atsLevelFinal || currentLevel) as 1 | 2 | 3 | 4 | 5;
+  const finalDetails = ATS_LEVEL_DETAILS[finalLevel];
 
   // Helper colors
   const primaryColor = [15, 23, 42]; // Slate 900
   const secondaryColor = [79, 70, 229]; // Indigo 600
   const lightBg = [248, 250, 252]; // Slate 50
   const borderColor = [226, 232, 240]; // Slate 200
+  const valueOrDash = (value: unknown) => value === 0 || Boolean(value) ? String(value) : "-";
+  const providerName = data.atsPrediction?.providerUsed || "Berbasis Aturan Klinis";
+  const modelName = data.atsPrediction?.modelUsed || "Clinical Safety Rules v1";
 
   // Standard Helper Functions
   const drawHeader = (pageNum: number) => {
@@ -43,7 +48,7 @@ export function generateIGDReportPDF(data: TriageRecord) {
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
     doc.text("Standar Australasian Triage Scale (ATS) Indonesia", 112, 16);
-    doc.text("Dicetak otomatis melalui Cloud RME-Triage Portal", 112, 20);
+    doc.text("Dicetak otomatis melalui Portal RME Triase", 112, 20);
 
     // Thick black line below header
     doc.setDrawColor(15, 23, 42);
@@ -63,7 +68,7 @@ export function generateIGDReportPDF(data: TriageRecord) {
     doc.setFontSize(7);
     doc.setTextColor(148, 163, 184);
     const dateStr = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }) + " WIB";
-    doc.text(`Waktu Cetak: ${dateStr} | Sistem Verifikasi AI Terakreditasi`, 15, 287);
+    doc.text(`Waktu cetak: ${dateStr} | Dokumen pendukung keputusan klinis`, 15, 287);
     doc.text(`Halaman ${pageNum} dari ${totalPages}`, 175, 287);
   };
 
@@ -226,15 +231,15 @@ export function generateIGDReportPDF(data: TriageRecord) {
   doc.setTextColor(15, 23, 42);
 
   // Row 1 values
-  const sys = data.vitalSign?.tekananDarahSistolik || 0;
-  const dia = data.vitalSign?.tekananDarahDiastolik || 0;
+  const sys = valueOrDash(data.vitalSign?.tekananDarahSistolik);
+  const dia = valueOrDash(data.vitalSign?.tekananDarahDiastolik);
   doc.text(`${sys}/${dia} mmHg`, 18, 119);
-  doc.text(`${data.vitalSign?.heartRate || 0} x/menit`, 63, 119);
-  doc.text(`${data.vitalSign?.respiratoryRate || 0} x/menit`, 108, 119);
-  doc.text(`${data.vitalSign?.suhuTubuh || 36.5} °C`, 153, 119);
+  doc.text(`${valueOrDash(data.vitalSign?.heartRate)} x/menit`, 63, 119);
+  doc.text(`${valueOrDash(data.vitalSign?.respiratoryRate)} x/menit`, 108, 119);
+  doc.text(`${valueOrDash(data.vitalSign?.suhuTubuh)} C`, 153, 119);
 
   // Row 2 values
-  doc.text(`${data.vitalSign?.saturasiOksigen || 98} %`, 18, 131);
+  doc.text(`${valueOrDash(data.vitalSign?.saturasiOksigen)} %`, 18, 131);
   doc.text(`${data.vitalSign?.avpu || "Alert"}`, 63, 131);
   doc.text(`${data.vitalSign?.polaNapas || "reguler"}`, 108, 131);
   const painScaleVal = data.painScale?.skala || 0;
@@ -435,7 +440,7 @@ export function generateIGDReportPDF(data: TriageRecord) {
   doc.setFontSize(9);
   doc.text(`DESKRIPSI: ${levelDetails.subtitle}`, 19, 47);
   doc.setFontSize(8.5);
-  doc.text(`RESPONSE TIME LIMIT (BATAS TUNGGU): MASIMAL ${levelDetails.timeLimit}`, 19, 52);
+  doc.text(`BATAS WAKTU PENANGANAN: ${finalDetails.timeLimit}`, 19, 52);
 
   // Confidence and Engine Used Metadata
   doc.rect(15, 59, 180, 18, "S");
@@ -444,25 +449,25 @@ export function generateIGDReportPDF(data: TriageRecord) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
-  doc.text("Penyedia AI yang Menganalisis Triage:", 18, 64);
+  doc.text("Sumber Analisis Triase:", 18, 64);
   doc.text("Jenis Model yang Dipakai:", 18, 72);
 
-  doc.text("Skor Keyakinan AI (Confidence Score):", 108, 64);
+  doc.text("Skor Keyakinan Analisis:", 108, 64);
   doc.text("Indikator Kegawatdaruratan:", 108, 72);
 
   // metadata values
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(79, 70, 229);
-  clippedText(data.atsPrediction?.providerUsed || "Google Gemini 3.5 [Default]", 18, 68, 82);
-  clippedText(data.atsPrediction?.modelUsed || "gemini-3.5-flash", 18, 76, 82);
+  clippedText(providerName, 18, 68, 82);
+  clippedText(modelName, 18, 76, 82);
   
-  const emgStr = data.atsPrediction?.emergencyIndicator ? "🚨 CRITICAL / GAWAT DARURAT" : "SITUASI STABIL / LOW RISK";
+  const emgStr = data.atsPrediction?.emergencyIndicator ? "GAWAT DARURAT" : "STABIL / RISIKO RENDAH";
   doc.setTextColor(data.atsPrediction?.emergencyIndicator ? 185 : 30, data.atsPrediction?.emergencyIndicator ? 28 : 41, data.atsPrediction?.emergencyIndicator ? 28 : 59);
   clippedText(emgStr, 108, 76, 82);
 
   doc.setTextColor(15, 23, 42);
-  doc.text(`${data.atsPrediction?.confidenceScore || 100}%`, 108, 68);
+  doc.text(`${data.atsPrediction?.confidenceScore ?? 100}%`, 108, 68);
 
 
   // 2. Clinical Reason Text Area
@@ -501,17 +506,17 @@ export function generateIGDReportPDF(data: TriageRecord) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(15, 23, 42);
-  doc.text("VII. PERINGATAN RED FLAGS & REKOMENDASI INTERVENSI IGD", 18, 145);
+  doc.text("VII. TANDA BAHAYA & REKOMENDASI INTERVENSI IGD", 18, 145);
 
   doc.rect(15, 147, 180, 45, "S");
   doc.line(105, 147, 105, 192);
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(153, 27, 27); // Deep Red
-  doc.text("KONDISI RED FLAGS / TANDA BAHAYA:", 18, 152);
+  doc.text("TANDA BAHAYA KLINIS:", 18, 152);
 
   doc.setTextColor(22, 101, 52); // Deep Green
-  doc.text("REKOMENDASI INTERVENSI ASKEP IGD AWAL:", 108, 152);
+  doc.text("REKOMENDASI TINDAKAN AWAL IGD:", 108, 152);
 
   // Print Red Flags list
   doc.setFont("helvetica", "normal");
@@ -519,7 +524,7 @@ export function generateIGDReportPDF(data: TriageRecord) {
   let redFlagY = 157;
   const redFlags = data.atsPrediction?.warningConditions && data.atsPrediction.warningConditions.length > 0
     ? data.atsPrediction.warningConditions
-    : ["Tidak terdeteksi parameter klinis kritis yang abnormal berkategori red flag"];
+    : ["Tidak terdeteksi tanda bahaya klinis kritis berdasarkan data yang tersedia."];
   redFlags.slice(0, 5).forEach((rf) => {
     const wrappedRf = doc.splitTextToSize(`- ${rf}`, 84);
     wrappedRf.forEach((line: string) => {
@@ -536,7 +541,7 @@ export function generateIGDReportPDF(data: TriageRecord) {
     ? data.atsPrediction.rekomendasiAwal
     : ["Observasi vital sign teratur", "Posisikan pasien nyaman"];
   recommendations.slice(0, 6).forEach((rec) => {
-    const wrappedRec = doc.splitTextToSize(`✓ ${rec}`, 84);
+    const wrappedRec = doc.splitTextToSize(`- ${rec}`, 84);
     wrappedRec.forEach((line: string) => {
       if (recY < 191) {
         doc.text(line, 108, recY);
@@ -554,28 +559,28 @@ export function generateIGDReportPDF(data: TriageRecord) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(15, 23, 42);
-  doc.text("VIII. TINJAUAN KEPUTUSAN MANUAL PETUGAS IGD (MANUAL OVERRIDE)", 18, 201);
+  doc.text("VIII. TINJAUAN KEPUTUSAN MANUAL PETUGAS IGD", 18, 201);
 
   doc.rect(15, 203, 180, 20, "S");
   doc.line(15, 210, 195, 210);
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(100, 116, 139);
-  doc.text("Status Override Pengguna:", 18, 207);
+  doc.text("Status Override Klinis:", 18, 207);
   doc.text("Ubah Level Menjadi:", 75, 207);
-  doc.text("Alasan Profesional Override:", 18, 214);
+  doc.text("Alasan Profesional:", 18, 214);
 
   // Status Values
   doc.setFont("helvetica", "bold");
   const isOverrideActive = !!data.atsFinal?.atsLevelOverride;
   doc.setTextColor(isOverrideActive ? 217 : 22, isOverrideActive ? 119 : 101, isOverrideActive ? 6 : 52);
-  doc.text(isOverrideActive ? "YA (AKTIF)" : "TIDAK (AI Sesuai)", 55, 207);
+  doc.text(isOverrideActive ? "YA (AKTIF)" : "TIDAK (SESUAI PREDIKSI)", 55, 207);
   doc.setTextColor(15, 23, 42);
   doc.text(isOverrideActive ? `ATS Level ${data.atsFinal?.atsLevelOverride}` : "-", 102, 207);
 
   doc.setFont("helvetica", "normal");
   doc.setTextColor(51, 65, 85);
-  const overrideReasonStr = isOverrideActive ? (data.atsFinal?.alasanOverride || "-") : "Keputusan klasifikasi triase AI disetujui penuh oleh Tenaga Kesehatan.";
+  const overrideReasonStr = isOverrideActive ? (data.atsFinal?.alasanOverride || "-") : "Keputusan klasifikasi triase disetujui oleh tenaga kesehatan penanggung jawab.";
   const wrappedOverrideReason = doc.splitTextToSize(overrideReasonStr, 172);
   let overrideY = 218;
   wrappedOverrideReason.slice(0, 2).forEach((line: string) => {
@@ -592,7 +597,7 @@ export function generateIGDReportPDF(data: TriageRecord) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(15, 23, 42);
-  doc.text("IX. OTENTIKASI & LEGALISASI HASIL TRIASE IGD", 18, 232);
+  doc.text("IX. VERIFIKASI HASIL TRIASE IGD", 18, 232);
 
   // Draw signature fields
   doc.rect(15, 234, 180, 44, "S");
@@ -601,13 +606,13 @@ export function generateIGDReportPDF(data: TriageRecord) {
   // Left Section info
   doc.setFont("helvetica", "bold");
   doc.setTextColor(100, 116, 139);
-  doc.text("Akurasi AI & Pernyataan Hukum:", 18, 239);
-  doc.setFont("helvetica", "normal font-sans");
+  doc.text("Pernyataan Penggunaan:", 18, 239);
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(100, 116, 139);
   clippedText("Hasil triase ini adalah bagian dari lembar rekam medis elektronik (RME)", 18, 244, 84);
   clippedText("yang diatur oleh Kementerian Kesehatan Peraturan No. 24 Tahun 2022.", 18, 248, 84);
-  clippedText("Sistem CDSS triase AI ini berperan sebagai asisten pengambil keputusan,", 18, 252, 84);
+  clippedText("Sistem pendukung keputusan triase ini berperan sebagai alat bantu,", 18, 252, 84);
   clippedText("di mana kewenangan dan pertanggungjawaban asuhan klinis mutlak berada", 18, 256, 84);
   clippedText("pada tenaga medis yang membubuhkan tanda tangan verifikasi fisik / digital.", 18, 260, 84);
 
@@ -619,7 +624,7 @@ export function generateIGDReportPDF(data: TriageRecord) {
   clippedText(`Kota Administrasi, Tanggal ${signDateStr}`, 110, 239, 82);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  doc.text("Verifikator Penanggung Jawab Triage,", 110, 243);
+  doc.text("Verifikator Penanggung Jawab Triase,", 110, 243);
 
   // Clinician name and role
   const clinicianName = data.atsFinal?.namaPetugas || "Nama Tenaga Kesehatan";
