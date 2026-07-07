@@ -136,10 +136,11 @@ export async function classifyTriage(record: any, aiProvider?: string, aiModel?:
       aiResult = result.parsed;
       providerUsed = result.providerUsed;
       modelUsed = result.modelUsed;
-    } else if (aiProvider === "runpod" && env.customModelUrl) {
+    } else if (aiProvider === "runpod" && env.customModelUrl && env.runpodVllmToken) {
+      const runpodVllmBearer = `Bearer ${env.runpodVllmToken}`
       const response = await fetch(env.customModelUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer sk-TRIAGE_20260707_BRIN" },
+        headers: { "Content-Type": "application/json", "Authorization": runpodVllmBearer },
         body: JSON.stringify({ "model": "triage-qwen3-lora", {"role": "user", "content": promptText} }),
       });
       if (!response.ok) throw new Error(`RunPOD Custom API returned status ${response.status}`);
