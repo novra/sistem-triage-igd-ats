@@ -136,6 +136,18 @@ export async function classifyTriage(record: any, aiProvider?: string, aiModel?:
       aiResult = result.parsed;
       providerUsed = result.providerUsed;
       modelUsed = result.modelUsed;
+    } else if (aiProvider === "runpod" && env.customModelUrl && env.runpodVllmToken) {
+      const runpodVllmBearer = `Bearer ${env.runpodVllmToken}`
+      const response = await fetch(env.customModelUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": runpodVllmBearer },
+        body: JSON.stringify({ "model": "triage-qwen3-lora", {"role": "user", "content": promptText} }),
+      });
+      if (!response.ok) throw new Error(`RunPOD Custom API returned status ${response.status}`);
+      const result = await response.json();
+      aiResult = result.parsed;
+      providerUsed = "Model Mandiri (RunPOD)";
+      modelUsed = aiResult.modelUsed || data.modelUsed || data.model || "Custom Endpoint";
     } else if (aiProvider === "custom" && env.customModelUrl) {
       const response = await fetch(env.customModelUrl, {
         method: "POST",

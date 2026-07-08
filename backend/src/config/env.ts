@@ -9,6 +9,7 @@ export const env = {
   geminiApiKey: process.env.GEMINI_API_KEY || "",
   huggingFaceApiKey: process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || "",
   customModelUrl: process.env.CUSTOM_MODEL_URL || "",
+  runpodVllmToken: process.env.RUNPOD_VLLM_TOKEN || "",
 };
 
 export const isProduction = env.nodeEnv === "production";
