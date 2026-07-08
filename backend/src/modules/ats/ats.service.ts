@@ -141,7 +141,7 @@ export async function classifyTriage(record: any, aiProvider?: string, aiModel?:
       const response = await fetch(env.customModelUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": runpodVllmBearer },
-        body: JSON.stringify({ "model": "triage-qwen3-lora", "messages": [{"role": "user", "content": promptText}}] ),
+        body: JSON.stringify({ "model": "triage-qwen3-lora", "messages": [{"role": "user", "content": promptText}]} ),
       });
       if (!response.ok) throw new Error(`RunPOD Custom API returned status ${response.status}`);
       const result = await response.json();
