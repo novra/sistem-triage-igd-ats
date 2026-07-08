@@ -81,6 +81,8 @@ export default function RecordHistoryList({
         return "gemini-3.5-flash";
       case "Hugging Face":
         return "mistralai/Mistral-7B-Instruct-v0.3";
+      case "Model Mandiri (RunPod)":
+        return "triage-qwen3-lora";
       case "Model Mandiri (Custom Endpoint)":
         return "Custom Endpoint";
       case "Rule-Based":

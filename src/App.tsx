@@ -275,7 +275,8 @@ export default function App() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [aiProvider, setAiProvider] = useState<string>(() => {
-    return localStorage.getItem("ats_ai_provider") || "gemini";
+    const savedProvider = localStorage.getItem("ats_ai_provider");
+    return savedProvider === "custom" ? "runpod" : savedProvider || "gemini";
   });
   const [aiModel, setAiModel] = useState<string>(() => {
     return localStorage.getItem("ats_ai_model") || "openai-oss";
@@ -651,17 +652,17 @@ export default function App() {
                   <span>Hugging Face</span>
                 </button>
                 <button
-                  id="provider-custom"
+                  id="provider-runpod"
                   type="button"
                   onClick={() => handleSetAiProvider("runpod")}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                    aiProvider === "custom"
+                    aiProvider === "runpod"
                       ? "bg-indigo-600 text-white shadow-xs"
                       : "text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
                   }`}
                 >
                   <Cpu size={13} />
-                  <span>Model Mandiri</span>
+                  <span>Model Mandiri RunPod</span>
                 </button>
               </div>
             </div>

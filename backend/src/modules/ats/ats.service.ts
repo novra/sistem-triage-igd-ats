@@ -123,6 +123,86 @@ async function classifyWithHuggingFace(promptText: string, aiModel?: string) {
   return { parsed: JSON.parse(rawJson), modelUsed: data?.model || hfModel, providerUsed: "Hugging Face" };
 }
 
+function extractTriagePrediction(payload: any) {
+  const candidates = [
+    payload?.choices?.[0]?.message?.content,
+    payload?.choices?.[0]?.text,
+    payload?.generated_text,
+    payload?.record,
+    payload?.prediction,
+    payload?.result,
+    payload?.output?.record,
+    payload?.output?.prediction,
+    payload?.output,
+    Array.isArray(payload?.output) ? payload.output[0] : undefined,
+    payload,
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+
+    if (typeof candidate === "string") {
+      const rawJson = candidate.match(/\{[\s\S]*\}/)?.[0] || candidate;
+      try {
+        const parsed = JSON.parse(rawJson);
+        if (typeof parsed?.atsLevel === "number") return parsed;
+      } catch {
+        continue;
+      }
+    }
+
+    if (typeof candidate?.atsLevel === "number") return candidate;
+  }
+
+  return null;
+}
+
+async function classifyWithRunPod(promptText: string, record: any, ruleResult: ReturnType<typeof classifyByRules>) {
+  const usesOpenAiCompatibleEndpoint = /\/v1\/|\/chat\/completions/i.test(env.customModelUrl);
+  const targetUrl = usesOpenAiCompatibleEndpoint && !/\/chat\/completions\/?$/i.test(env.customModelUrl)
+    ? `${env.customModelUrl.replace(/\/$/, "")}/chat/completions`
+    : env.customModelUrl;
+  const requestBody = usesOpenAiCompatibleEndpoint
+    ? {
+        model: env.runpodVllmModel,
+        messages: [
+          { role: "system", content: "Anda adalah pakar triase medis emergensi. Balas hanya JSON valid tanpa markdown." },
+          { role: "user", content: promptText },
+        ],
+        max_tokens: 1200,
+        temperature: 0.1,
+        stream: false,
+        response_format: { type: "json_object" },
+      }
+    : {
+        input: {
+          record,
+          ruleResult,
+          promptText,
+        },
+      };
+
+  const response = await fetch(targetUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(env.runpodApiKey ? { Authorization: `Bearer ${env.runpodApiKey}` } : {}),
+    },
+    body: JSON.stringify(requestBody),
+  });
+  if (!response.ok) throw new Error(`RunPod API returned status ${response.status}`);
+
+  const data = await response.json();
+  const parsed = extractTriagePrediction(data);
+  if (!parsed) throw new Error("RunPod model returned data, but atsLevel was not structured properly.");
+
+  return {
+    parsed,
+    modelUsed: parsed.modelUsed || data?.modelUsed || data?.model || env.runpodVllmModel,
+    providerUsed: "Model Mandiri (RunPod)",
+  };
+}
+
 export async function classifyTriage(record: any, aiProvider?: string, aiModel?: string) {
   const ruleResult = classifyByRules(record);
   const promptText = buildPrompt(record);
@@ -136,29 +216,11 @@ export async function classifyTriage(record: any, aiProvider?: string, aiModel?:
       aiResult = result.parsed;
       providerUsed = result.providerUsed;
       modelUsed = result.modelUsed;
-    } else if (aiProvider === "runpod" && env.customModelUrl && env.runpodVllmToken) {
-      const runpodVllmBearer = `Bearer ${env.runpodVllmToken}`
-      const response = await fetch(env.customModelUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": runpodVllmBearer },
-        body: JSON.stringify({ "model": "triage-qwen3-lora", "messages": [{"role": "user", "content": promptText}]} ),
-      });
-      if (!response.ok) throw new Error(`RunPOD Custom API returned status ${response.status}`);
-      const result = await response.json();
+    } else if ((aiProvider === "runpod" || aiProvider === "custom") && env.customModelUrl) {
+      const result = await classifyWithRunPod(promptText, record, ruleResult);
       aiResult = result.parsed;
-      providerUsed = "Model Mandiri (RunPOD)";
-      modelUsed = aiResult.modelUsed || data.modelUsed || data.model || "Custom Endpoint";
-    } else if (aiProvider === "custom" && env.customModelUrl) {
-      const response = await fetch(env.customModelUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ record, ruleResult, promptText }),
-      });
-      if (!response.ok) throw new Error(`Custom API returned status ${response.status}`);
-      const data = await response.json();
-      aiResult = data.record || data;
-      providerUsed = "Model Mandiri (Custom Endpoint)";
-      modelUsed = aiResult.modelUsed || data.modelUsed || data.model || "Custom Endpoint";
+      providerUsed = result.providerUsed;
+      modelUsed = result.modelUsed;
     } else if (env.geminiApiKey) {
       const result = await classifyWithGemini(promptText);
       aiResult = result.parsed;

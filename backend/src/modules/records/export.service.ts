@@ -6,6 +6,8 @@ export function toTrainingDataset(records: any[]) {
         return "gemini-3.5-flash";
       case "Hugging Face":
         return "openai/gpt-oss-20b:fastest";
+      case "Model Mandiri (RunPod)":
+        return "triage-qwen3-lora";
       case "Model Mandiri (Custom Endpoint)":
         return "Custom Endpoint";
       case "Rule-Based":
