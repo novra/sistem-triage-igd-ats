@@ -653,7 +653,7 @@ export default function App() {
                 <button
                   id="provider-custom"
                   type="button"
-                  onClick={() => handleSetAiProvider("Runpod")}
+                  onClick={() => handleSetAiProvider("runpod")}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
                     aiProvider === "custom"
                       ? "bg-indigo-600 text-white shadow-xs"
