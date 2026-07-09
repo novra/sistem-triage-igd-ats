@@ -86,11 +86,10 @@ export default function ImportTriageRecords({
       const data = await res.json();
       if (data.success && data.record) {
         setParsedRecord(data.record);
-        setSuccessMsg(
-          data.source === "ai"
-            ? "🎉 AI berhasil memilah & mengekstrak data narasi klinis!"
-            : "✅ Berhasil memilah data narasi klinis (mode cepat/heuristik)."
-        );
+        const baseMsg = data.source === "ai"
+          ? "🎉 AI berhasil memilah & mengekstrak data narasi klinis!"
+          : "✅ Berhasil memilah data narasi klinis (mode cepat/heuristik).";
+        setSuccessMsg(data.notice ? `${baseMsg} ⚠️ ${data.notice}` : baseMsg);
       } else {
         throw new Error(data.error || "Gagal menstrukturisasikan data narasi klinis.");
       }

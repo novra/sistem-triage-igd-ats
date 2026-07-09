@@ -24,6 +24,17 @@ const HISTORIC_DISEASES = [
   "Tidak ada riwayat penyakit",
 ];
 
+// Level nyeri kualitatif dipakai hanya kalau tidak ada angka eksplisit sama sekali.
+// (?:\s+\S+){0,4} mengizinkan kata sisipan seperti "dada yang" di antara
+// "nyeri" dan kata intensitasnya, tapi dibatasi jaraknya agar tidak salah
+// tangkap kata umum ("sedang", "ringan") dari klausa lain yang tak terkait.
+const PAIN_QUALITATIVE_LEVELS: [RegExp, number][] = [
+  [/nyeri\b(?:\s+\S+){0,4}\s+(?:tak\s*tertahankan|luar biasa)/i, 9],
+  [/nyeri\b(?:\s+\S+){0,4}\s+(?:sangat\s+)?(?:berat|hebat)/i, 8],
+  [/nyeri\b(?:\s+\S+){0,4}\s+sedang\b/i, 5],
+  [/nyeri\b(?:\s+\S+){0,3}\s+ringan\b/i, 2],
+];
+
 const DISEASE_KEYWORDS: [RegExp, string][] = [
   [/hipertensi|tekanan darah tinggi/, "Hipertensi"],
   [/diabetes|kencing manis|\bdm\b/, "Diabetes Melitus"],
@@ -33,10 +44,97 @@ const DISEASE_KEYWORDS: [RegExp, string][] = [
   [/ppok|bronkitis kronis|\bcopd\b/, "PPOK"],
   [/gagal ginjal|cuci darah|hemodialisis/, "Gagal Ginjal"],
   [/epilepsi|kejang berulang/, "Epilepsi"],
-  [/kanker|tumor ganas|keganasan/, "Kanker"],
+  [/kanker|tumor ganas|keganasan|karsinoma|metastasis|metastatik|onkologi/, "Kanker"],
   [/\bhamil\b|kehamilan/, "Kehamilan"],
-  [/alergi obat/, "Alergi Obat"],
+  [/alergi obat|alergi\s+(?:terhadap\s+)?(?!makanan\b|debu\b|dingin\b|cuaca\b|serbuk\b|udara\b|logam\b)[a-z]{3,}/, "Alergi Obat"],
 ];
+
+// Kata setelah "riwayat ..." yang menandakan klausa sudah berpindah topik
+// (bukan lagi bagian dari daftar riwayat), dipakai untuk membatasi ekstraksi.
+const HISTORY_STOP_MARKERS = /\b(datang|dibawa|tiba|mengeluh|dengan keluhan|menyangkal|sejak|dirujuk|masuk)\b/i;
+const HISTORY_NEGATION_MARKERS = /\b(tidak|tanpa|tak ada|disangkal|bukan)\b/i;
+
+function isCoveredByDiseaseKeyword(item: string): boolean {
+  const lower = item.toLowerCase();
+  return DISEASE_KEYWORDS.some(([pattern]) => pattern.test(lower));
+}
+
+/**
+ * Tangkap riwayat/alergi yang disebutkan tapi tidak cocok ke 11 opsi checkbox
+ * baku (mis. "dislipidemia", "hipotensi", "alergi terhadap penisilin" bila
+ * sudah tercakup DISEASE_KEYWORDS akan dikecualikan di sini), alih-alih
+ * dibuang begitu saja. Best-effort saja — narasi kompleks tetap lebih
+ * baik ditangani lewat fallback AI (lihat isHeuristicResultWeak).
+ */
+function extractRiwayatLainnya(narrative: string): string {
+  const items: string[] = [];
+  const clauseRegex = /riwayat\s+([^.]+?)(?=\.|$)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = clauseRegex.exec(narrative)) !== null) {
+    const precedingContext = narrative.slice(Math.max(0, match.index - 25), match.index);
+    if (HISTORY_NEGATION_MARKERS.test(precedingContext)) continue;
+
+    let clause = match[1];
+    const stopMatch = clause.match(HISTORY_STOP_MARKERS);
+    if (stopMatch && stopMatch.index !== undefined) clause = clause.slice(0, stopMatch.index);
+
+    const parts = clause
+      .split(/,|\bdan\b|\bserta\b/i)
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 3);
+    items.push(...parts);
+  }
+
+  const seen = new Set<string>();
+  const leftovers = items.filter((item) => {
+    if (isCoveredByDiseaseKeyword(item)) return false;
+    const key = item.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  return leftovers
+    .map((item) => item.charAt(0).toUpperCase() + item.slice(1))
+    .join(", ")
+    .slice(0, 300);
+}
+
+/**
+ * Cari skala nyeri per kalimat (bukan window karakter tetap) supaya tidak
+ * kehilangan angka yang berjarak jauh dari kata "nyeri"/"skala", dan
+ * mengenali format umum lain (VAS/NRS, bare number, deskripsi kualitatif).
+ * Prioritas: angka eksplisit ("X/10", "X dari 10") > VAS/NRS > angka polos
+ * dekat kata skala/nyeri > deskripsi kualitatif (ringan/sedang/berat).
+ */
+function findPainScale(text: string): number | null {
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const isSentenceNegated = (sentence: string) => /\b(tidak|tanpa|menyangkal|disangkal|bukan|tak ada)\b/i.test(sentence);
+
+  for (const sentence of sentences) {
+    if (!/nyeri|skala|\bvas\b|\bnrs\b/i.test(sentence) || isSentenceNegated(sentence)) continue;
+
+    const withDenominator = sentence.match(/(\d{1,2}(?:[.,]\d)?)\s*(?:\/|dari)\s*10\b/);
+    if (withDenominator) return Math.min(10, Math.round(parseFloat(withDenominator[1].replace(",", "."))));
+
+    const vasNrs = sentence.match(/\b(?:vas|nrs)\b\s*[:\-]?\s*(\d{1,2})\b/i);
+    if (vasNrs) return Math.min(10, parseInt(vasNrs[1], 10));
+
+    const bareScale =
+      sentence.match(/skala\s*(?:nyeri)?\s*[:\-]?\s*(\d{1,2})\b/i) ||
+      sentence.match(/nyeri\s*(?:dinilai|dirasakan)?\s*(?:skala)?\s*[:\-]?\s*(\d{1,2})\b/i);
+    if (bareScale) return Math.min(10, parseInt(bareScale[1], 10));
+  }
+
+  for (const sentence of sentences) {
+    if (isSentenceNegated(sentence)) continue;
+    for (const [pattern, level] of PAIN_QUALITATIVE_LEVELS) {
+      if (pattern.test(sentence)) return level;
+    }
+  }
+
+  return null;
+}
 
 export function parseNarrativeHeuristic(narrative: string) {
   const text = narrative.toLowerCase();
@@ -105,19 +203,17 @@ export function parseNarrativeHeuristic(narrative: string) {
   const tempMatch = text.match(/suhu\s*(?:tubuh|badan)?\s*[:-]?\s*(\d{2}[.,]\d{1,2})\s*°?\s*c/) || text.match(/(\d{2}[.,]\d{1,2})\s*°?\s*c\b/);
   if (tempMatch) result.vitalSign.suhuTubuh = parseFloat(tempMatch[1].replace(",", "."));
 
-  const painMatch =
-    text.match(/(?:skala\s*nyeri|nyeri|intensitas\s*nyeri)[^\d]{0,20}(\d{1,2})\s*(?:\/|dari)\s*10/) ||
-    text.match(/skala\s*(\d{1,2})\s*\/\s*10/);
-  if (painMatch) {
-    const skala = Math.min(10, parseInt(painMatch[1], 10));
-    result.painScale.skala = skala;
-    result.painScale.kategori = skala === 0 ? "tidak nyeri" : skala <= 3 ? "ringan" : skala <= 6 ? "sedang" : "berat";
+  const foundSkala = findPainScale(text);
+  if (foundSkala !== null) {
+    result.painScale.skala = foundSkala;
+    result.painScale.kategori = foundSkala === 0 ? "tidak nyeri" : foundSkala <= 3 ? "ringan" : foundSkala <= 6 ? "sedang" : "berat";
   }
   if (text.includes("menjalar")) result.painScale.menjalar = true;
 
   for (const [pattern, label] of DISEASE_KEYWORDS) {
     if (pattern.test(text) && !result.riwayatPenyakit.includes(label)) result.riwayatPenyakit.push(label);
   }
+  result.riwayatPenyakitLainnya = extractRiwayatLainnya(narrative);
 
   const isPresent = (keyword: string) => text.includes(keyword) && !isNegatedMention(text, keyword);
 

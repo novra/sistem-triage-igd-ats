@@ -38,7 +38,14 @@ triageRouter.post("/parse-narrative", async (req, res, next) => {
       console.error("AI narrative extraction failed, using heuristic result:", error);
     }
 
-    return res.json({ success: true, record: heuristicRecord, source: "heuristic" });
+    // Hasil heuristik terdeteksi lemah (lihat isHeuristicResultWeak) tapi AI tidak
+    // dipanggil/gagal — jangan diam-diam kirim data pasien ke provider AI eksternal
+    // kalau user memang memilih mode Rule-Based; cukup beri tahu lewat notice.
+    const notice = !aiProvider || aiProvider === "rulebased"
+      ? "Hasil ekstraksi cepat (heuristik) mungkin belum lengkap, terutama riwayat penyakit/alergi. Aktifkan provider AI (RunPod/Hugging Face) di pengaturan untuk hasil lebih menyeluruh, atau tinjau & lengkapi manual di formulir."
+      : "AI tidak tersedia/gagal merespons sehingga memakai hasil ekstraksi cepat (heuristik), yang mungkin belum lengkap. Mohon tinjau & lengkapi manual di formulir.";
+
+    return res.json({ success: true, record: heuristicRecord, source: "heuristic", notice });
   } catch (error) {
     return next(error);
   }
