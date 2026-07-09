@@ -126,10 +126,13 @@ export interface TriageRecord {
   
   atsPrediction?: {
     atsLevel: 1 | 2 | 3 | 4 | 5;
+    atsCategory?: string;
     confidenceScore: number; // 0-100
     warningConditions: string[];
     emergencyIndicator: boolean;
     alasanKlasifikasi: string;
+    informasiKlinisDigunakan?: string[];
+    informasiTambahanDiperlukan?: string[];
     rekomendasiAwal: string[];
     providerUsed?: string;
     modelUsed?: string;

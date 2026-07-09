@@ -184,6 +184,7 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
           </div>
           <div className="text-[11px] text-slate-500 font-medium space-y-1">
             <p><strong className="text-slate-700">Model:</strong> {prediction.modelUsed || "Clinical Safety Rules v1"}</p>
+            <p><strong className="text-slate-700">Kategori:</strong> {prediction.atsCategory || `ATS Kategori ${prediction.atsLevel}`}</p>
             <p><strong className="text-slate-700">Emergency:</strong> {prediction.emergencyIndicator ? "Ya" : "Tidak"}</p>
           </div>
         </div>
@@ -246,6 +247,40 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
           {prediction.alasanKlasifikasi}
         </p>
       </div>
+
+      {/* Clinical information used */}
+      {prediction.informasiKlinisDigunakan && prediction.informasiKlinisDigunakan.length > 0 && (
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-3">
+          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider border-b pb-2">
+            Informasi Klinis yang Digunakan
+          </h3>
+          <ul className="space-y-1.5 text-xs text-slate-600">
+            {prediction.informasiKlinisDigunakan.map((item, i) => (
+              <li key={i} className="flex items-start gap-2 font-medium">
+                <span className="text-indigo-500 font-bold shrink-0 mt-0.5">-</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Missing clinical information */}
+      {prediction.informasiTambahanDiperlukan && prediction.informasiTambahanDiperlukan.length > 0 && (
+        <div className="bg-sky-50 p-5 rounded-2xl border border-sky-100 shadow-xs space-y-3">
+          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-sky-100 pb-2">
+            Informasi Tambahan yang Masih Diperlukan
+          </h3>
+          <ul className="space-y-1.5 text-xs text-slate-600">
+            {prediction.informasiTambahanDiperlukan.map((item, i) => (
+              <li key={i} className="flex items-start gap-2 font-medium">
+                <span className="text-sky-600 font-bold shrink-0 mt-0.5">-</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Early actions */}
       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-3">
