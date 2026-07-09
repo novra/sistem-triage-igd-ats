@@ -83,6 +83,22 @@ function toAtsLevel(value: unknown): 1 | 2 | 3 | 4 | 5 | null {
   return numericValue >= 1 && numericValue <= 5 ? (numericValue as 1 | 2 | 3 | 4 | 5) : null;
 }
 
+function readAtsLevel(value: any): 1 | 2 | 3 | 4 | 5 | null {
+  return toAtsLevel(
+    value?.atsLevel ??
+      value?.ats_level ??
+      value?.ats ??
+      value?.level ??
+      value?.category ??
+      value?.kategori ??
+      value?.atsCategory ??
+      value?.ats_category ??
+      value?.kategoriATS ??
+      value?.kategoriAts ??
+      value?.kategori_ats,
+  );
+}
+
 function toStringArray(value: unknown): string[] {
   if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
   if (typeof value === "string" && value.trim()) return [value.trim()];
@@ -211,7 +227,28 @@ async function classifyWithHuggingFace(promptText: string, aiModel?: string) {
   return { parsed: JSON.parse(rawJson), modelUsed: data?.model || hfModel, providerUsed: "Hugging Face" };
 }
 
-function extractTriagePrediction(payload: any) {
+function extractTriagePrediction(payload: any, depth = 0): any {
+  if (!payload || depth > 6) return null;
+
+  if (typeof payload === "string") {
+    const rawJson = payload.match(/\{[\s\S]*\}/)?.[0] || payload.match(/\[[\s\S]*\]/)?.[0] || payload;
+    try {
+      return extractTriagePrediction(JSON.parse(rawJson), depth + 1);
+    } catch {
+      return null;
+    }
+  }
+
+  if (Array.isArray(payload)) {
+    for (const item of payload) {
+      const parsed = extractTriagePrediction(item, depth + 1);
+      if (parsed) return parsed;
+    }
+    return null;
+  }
+
+  if (readAtsLevel(payload)) return payload;
+
   const candidates = [
     payload?.parsed,
     payload?.choices?.[0]?.message?.content,
@@ -225,24 +262,11 @@ function extractTriagePrediction(payload: any) {
     payload?.output?.record,
     payload?.output?.prediction,
     payload?.output,
-    Array.isArray(payload?.output) ? payload.output[0] : undefined,
-    payload,
   ];
 
   for (const candidate of candidates) {
-    if (!candidate) continue;
-
-    if (typeof candidate === "string") {
-      const rawJson = candidate.match(/\{[\s\S]*\}/)?.[0] || candidate;
-      try {
-        const parsed = JSON.parse(rawJson);
-        if (toAtsLevel(parsed?.atsLevel || parsed?.atsCategory || parsed?.kategoriATS || parsed?.kategoriAts)) return parsed;
-      } catch {
-        continue;
-      }
-    }
-
-    if (toAtsLevel(candidate?.atsLevel || candidate?.atsCategory || candidate?.kategoriATS || candidate?.kategoriAts)) return candidate;
+    const parsed = extractTriagePrediction(candidate, depth + 1);
+    if (parsed) return parsed;
   }
 
   return null;
@@ -324,12 +348,12 @@ export async function classifyTriage(record: any, aiProvider?: string, aiModel?:
     console.error("AI classification failed, using rule fallback:", error);
   }
 
-  const parsedLevel = toAtsLevel(aiResult?.atsLevel || aiResult?.atsCategory || aiResult?.kategoriATS || aiResult?.kategoriAts);
+  const parsedLevel = readAtsLevel(aiResult);
   if (!aiResult || !parsedLevel) {
     aiResult = ruleFallback(ruleResult);
   }
 
-  let finalAtsLevel = toAtsLevel(aiResult.atsLevel || aiResult.atsCategory || aiResult.kategoriATS || aiResult.kategoriAts) || 3;
+  let finalAtsLevel = readAtsLevel(aiResult) || 3;
   let finalWarnings = toStringArray(aiResult.warningConditions || aiResult.kondisiPeringatan || aiResult.redFlags);
   let finalEmergency = Boolean(aiResult.emergencyIndicator || ruleResult.emergency);
 
