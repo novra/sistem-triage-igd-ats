@@ -276,7 +276,9 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [aiProvider, setAiProvider] = useState<string>(() => {
     const savedProvider = localStorage.getItem("ats_ai_provider");
-    return savedProvider === "custom" ? "runpod" : savedProvider || "gemini";
+    if (savedProvider === "custom") return "runpod";
+    if (savedProvider === "gemini") return "rulebased";
+    return savedProvider || "rulebased";
   });
   const [aiModel, setAiModel] = useState<string>(() => {
     return localStorage.getItem("ats_ai_model") || "openai-oss";
@@ -628,15 +630,27 @@ export default function App() {
                 <button
                   id="provider-gemini"
                   type="button"
-                  onClick={() => handleSetAiProvider("gemini")}
+                  disabled
+                  aria-disabled="true"
+                  title="Gemini 3.5 dinonaktifkan. Gunakan Model Mandiri, Hugging Face, atau Pure Rule Based."
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600 opacity-70"
+                >
+                  <Wand2 size={13} />
+                  <span>Google Gemini 3.5</span>
+                  <span className="text-[9px] uppercase tracking-wider">Off</span>
+                </button>
+                <button
+                  id="provider-rulebased"
+                  type="button"
+                  onClick={() => handleSetAiProvider("rulebased")}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                    aiProvider === "gemini"
+                    aiProvider === "rulebased"
                       ? "bg-indigo-600 text-white shadow-xs"
                       : "text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
                   }`}
                 >
-                  <Wand2 size={13} />
-                  <span>Google Gemini 3.5</span>
+                  <CheckCircle2 size={13} />
+                  <span>Pure Rule Based</span>
                 </button>
                 <button
                   id="provider-huggingface"

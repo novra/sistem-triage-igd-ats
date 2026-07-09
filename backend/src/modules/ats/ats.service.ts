@@ -302,7 +302,9 @@ export async function classifyTriage(record: any, aiProvider?: string, aiModel?:
   let modelUsed = "Clinical Safety Rules v2";
 
   try {
-    if (aiProvider === "huggingface" && env.huggingFaceApiKey) {
+    if (aiProvider === "rulebased") {
+      aiResult = ruleFallback(ruleResult);
+    } else if (aiProvider === "huggingface" && env.huggingFaceApiKey) {
       const result = await classifyWithHuggingFace(promptText, aiModel);
       aiResult = result.parsed;
       providerUsed = result.providerUsed;
@@ -312,7 +314,7 @@ export async function classifyTriage(record: any, aiProvider?: string, aiModel?:
       aiResult = result.parsed;
       providerUsed = result.providerUsed;
       modelUsed = result.modelUsed;
-    } else if (env.geminiApiKey) {
+    } else if (aiProvider === "gemini" && env.geminiApiKey) {
       const result = await classifyWithGemini(promptText);
       aiResult = result.parsed;
       providerUsed = result.providerUsed;

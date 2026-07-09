@@ -12,7 +12,6 @@ export function generateIGDReportPDF(data: TriageRecord) {
   const currentLevel = (data.atsFinal?.atsLevelOverride || baseLevel) as 1 | 2 | 3 | 4 | 5;
   const levelDetails = ATS_LEVEL_DETAILS[currentLevel];
   const finalLevel = (data.atsFinal?.atsLevelFinal || currentLevel) as 1 | 2 | 3 | 4 | 5;
-  const finalDetails = ATS_LEVEL_DETAILS[finalLevel];
 
   // Helper colors
   const primaryColor = [15, 23, 42]; // Slate 900
@@ -23,6 +22,13 @@ export function generateIGDReportPDF(data: TriageRecord) {
   const titleCase = (value: string) => value.replace(/\b\w/g, (c) => c.toUpperCase());
   const providerName = data.atsPrediction?.providerUsed || "Berbasis Aturan Klinis";
   const modelName = data.atsPrediction?.modelUsed || "Clinical Safety Rules v1";
+  const pdfTimeLimitLabel: Record<1 | 2 | 3 | 4 | 5, string> = {
+    1: "Segera",
+    2: "Maksimal 10 menit",
+    3: "Maksimal 30 menit",
+    4: "Maksimal 60 menit",
+    5: "Maksimal 120 menit",
+  };
 
   // Standard Helper Functions
   const drawHeader = (pageNum: number) => {
@@ -444,7 +450,7 @@ export function generateIGDReportPDF(data: TriageRecord) {
   doc.setFontSize(9);
   doc.text(`DESKRIPSI: ${levelDetails.subtitle}`, 19, 47);
   doc.setFontSize(8.5);
-  doc.text(`BATAS WAKTU PENANGANAN: ${finalDetails.timeLimit}`, 19, 52);
+  doc.text(`Batas waktu penanganan: ${pdfTimeLimitLabel[finalLevel]}`, 19, 52);
 
   // Confidence and Engine Used Metadata
   doc.rect(15, 59, 180, 18, "S");
@@ -565,31 +571,34 @@ export function generateIGDReportPDF(data: TriageRecord) {
   doc.setTextColor(15, 23, 42);
   doc.text("VIII. TINJAUAN KEPUTUSAN MANUAL PETUGAS IGD", 18, 201);
 
-  doc.rect(15, 203, 180, 20, "S");
-  doc.line(15, 210, 195, 210);
+  doc.rect(15, 203, 180, 22, "S");
+  doc.line(15, 213, 195, 213);
+  doc.line(105, 203, 105, 213);
 
   doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
   doc.setTextColor(100, 116, 139);
   doc.text("Status Override Klinis:", 18, 207);
-  doc.text("Ubah Level Menjadi:", 75, 207);
-  doc.text("Alasan Profesional:", 18, 214);
+  doc.text("Ubah Level Menjadi:", 108, 207);
+  doc.text("Alasan Profesional:", 18, 217);
 
   // Status Values
   doc.setFont("helvetica", "bold");
   const isOverrideActive = !!data.atsFinal?.atsLevelOverride;
   doc.setTextColor(isOverrideActive ? 217 : 22, isOverrideActive ? 119 : 101, isOverrideActive ? 6 : 52);
-  doc.text(isOverrideActive ? "YA (AKTIF)" : "TIDAK (SESUAI PREDIKSI)", 55, 207);
+  clippedText(isOverrideActive ? "YA (AKTIF)" : "TIDAK (SESUAI PREDIKSI)", 18, 211, 82);
   doc.setTextColor(15, 23, 42);
-  doc.text(isOverrideActive ? `ATS Level ${data.atsFinal?.atsLevelOverride}` : "-", 102, 207);
+  clippedText(isOverrideActive ? `ATS Level ${data.atsFinal?.atsLevelOverride}` : "-", 108, 211, 82);
 
   doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
   doc.setTextColor(51, 65, 85);
   const overrideReasonStr = isOverrideActive ? (data.atsFinal?.alasanOverride || "-") : "Keputusan klasifikasi triase disetujui oleh tenaga kesehatan penanggung jawab.";
   const wrappedOverrideReason = doc.splitTextToSize(overrideReasonStr, 172);
-  let overrideY = 218;
+  let overrideY = 221;
   wrappedOverrideReason.slice(0, 2).forEach((line: string) => {
     doc.text(line, 18, overrideY);
-    overrideY += 3.8;
+    overrideY += 3.2;
   });
 
 
