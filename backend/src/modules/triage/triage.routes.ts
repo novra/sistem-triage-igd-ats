@@ -2,7 +2,7 @@ import { Router } from "express";
 import { classifyTriage } from "../ats/ats.service";
 import { toTrainingDataset } from "../records/export.service";
 import { deleteRecord, listRecords, saveRecord } from "./triage.repository";
-import { parseNarrativeHeuristic } from "./narrative.service";
+import { isHeuristicResultWeak, parseNarrativeHeuristic, parseNarrativeWithAI } from "./narrative.service";
 
 export const triageRouter = Router();
 
@@ -21,11 +21,24 @@ triageRouter.post("/classify", async (req, res, next) => {
 
 triageRouter.post("/parse-narrative", async (req, res, next) => {
   try {
-    const { narrative } = req.body;
+    const { narrative, aiProvider, aiModel } = req.body;
     if (!narrative || typeof narrative !== "string" || !narrative.trim()) {
       return res.status(400).json({ error: "Data narasi klinis kosong atau tidak valid" });
     }
-    return res.json({ success: true, record: parseNarrativeHeuristic(narrative), source: "heuristic" });
+
+    const heuristicRecord = parseNarrativeHeuristic(narrative);
+    if (!isHeuristicResultWeak(narrative, heuristicRecord)) {
+      return res.json({ success: true, record: heuristicRecord, source: "heuristic" });
+    }
+
+    try {
+      const aiRecord = await parseNarrativeWithAI(narrative, aiProvider, aiModel);
+      if (aiRecord) return res.json({ success: true, record: aiRecord, source: "ai" });
+    } catch (error) {
+      console.error("AI narrative extraction failed, using heuristic result:", error);
+    }
+
+    return res.json({ success: true, record: heuristicRecord, source: "heuristic" });
   } catch (error) {
     return next(error);
   }

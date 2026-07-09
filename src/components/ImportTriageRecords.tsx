@@ -19,6 +19,8 @@ interface ImportTriageRecordsProps {
   onApplyRecord: (record: TriageRecord) => void;
   setErrorMsg: (msg: string | null) => void;
   setSuccessMsg: (msg: string | null) => void;
+  aiProvider: string;
+  aiModel: string;
 }
 
 // 3 Realistic Indonesian Healthcare Handover Presets for immediate Q&As
@@ -44,6 +46,8 @@ export default function ImportTriageRecords({
   onApplyRecord,
   setErrorMsg,
   setSuccessMsg,
+  aiProvider,
+  aiModel,
 }: ImportTriageRecordsProps) {
   const [narrative, setNarrative] = useState("");
   const [loading, setLoading] = useState(false);
@@ -72,7 +76,7 @@ export default function ImportTriageRecords({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ narrative }),
+        body: JSON.stringify({ narrative, aiProvider, aiModel }),
       });
 
       if (!res.ok) {
@@ -82,7 +86,11 @@ export default function ImportTriageRecords({
       const data = await res.json();
       if (data.success && data.record) {
         setParsedRecord(data.record);
-        setSuccessMsg("🎉 AI berhasil memilah & mengekstrak data narasi klinis!");
+        setSuccessMsg(
+          data.source === "ai"
+            ? "🎉 AI berhasil memilah & mengekstrak data narasi klinis!"
+            : "✅ Berhasil memilah data narasi klinis (mode cepat/heuristik)."
+        );
       } else {
         throw new Error(data.error || "Gagal menstrukturisasikan data narasi klinis.");
       }

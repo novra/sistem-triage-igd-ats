@@ -916,6 +916,8 @@ export default function App() {
             }}
             setErrorMsg={setErrorMsg}
             setSuccessMsg={setSuccessMsg}
+            aiProvider={aiProvider}
+            aiModel={aiModel}
           />
 
           {/* Historical Logs List */}
