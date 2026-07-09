@@ -126,6 +126,53 @@ const INITIAL_FORM: TriageRecord = {
   }
 };
 
+const normalizeImportedRecord = (record: Partial<TriageRecord>): TriageRecord => ({
+  ...INITIAL_FORM,
+  ...record,
+  riwayatPenyakit: record.riwayatPenyakit || INITIAL_FORM.riwayatPenyakit,
+  gejalaTambahan: record.gejalaTambahan || INITIAL_FORM.gejalaTambahan,
+  vitalSign: {
+    ...INITIAL_FORM.vitalSign,
+    ...record.vitalSign,
+    gcs: {
+      ...INITIAL_FORM.vitalSign.gcs,
+      ...record.vitalSign?.gcs,
+    },
+  },
+  painScale: {
+    ...INITIAL_FORM.painScale,
+    ...record.painScale,
+  },
+  pemeriksaanFisik: {
+    kepala: {
+      ...INITIAL_FORM.pemeriksaanFisik.kepala,
+      ...record.pemeriksaanFisik?.kepala,
+    },
+    leher: {
+      ...INITIAL_FORM.pemeriksaanFisik.leher,
+      ...record.pemeriksaanFisik?.leher,
+    },
+    dada: {
+      ...INITIAL_FORM.pemeriksaanFisik.dada,
+      ...record.pemeriksaanFisik?.dada,
+    },
+    perut: {
+      ...INITIAL_FORM.pemeriksaanFisik.perut,
+      ...record.pemeriksaanFisik?.perut,
+    },
+    ekstremitasAtas: {
+      ...INITIAL_FORM.pemeriksaanFisik.ekstremitasAtas,
+      ...record.pemeriksaanFisik?.ekstremitasAtas,
+    },
+    ekstremitasBawah: {
+      ...INITIAL_FORM.pemeriksaanFisik.ekstremitasBawah,
+      ...record.pemeriksaanFisik?.ekstremitasBawah,
+    },
+  },
+  atsPrediction: undefined,
+  atsFinal: undefined,
+});
+
 const STEPS = [
   { label: "Identitas GD", desc: "No RM, umur & asal datang" },
   { label: "Keluhan Utama", desc: "Kategori keluhan & gejala" },
@@ -862,7 +909,9 @@ export default function App() {
           {/* Dynamic Mass Batch Import (CSV/Excel/JSON formats) */}
           <ImportTriageRecords
             onApplyRecord={(rec) => {
-              setForm(rec);
+              const normalizedRecord = normalizeImportedRecord(rec);
+              setForm(normalizedRecord);
+              localStorage.setItem("ats_cached_form", JSON.stringify(normalizedRecord));
               setActiveStep(0);
             }}
             setErrorMsg={setErrorMsg}
