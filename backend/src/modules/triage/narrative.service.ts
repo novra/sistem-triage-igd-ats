@@ -200,8 +200,23 @@ export function parseNarrativeHeuristic(narrative: string) {
   if (rrMatch) result.vitalSign.respiratoryRate = parseInt(rrMatch[2] || rrMatch[1], 10);
   const spo2Match = text.match(/(spo2|saturasi|oxygen|oksigen)\s*[:-]?\s*(\d+)/);
   if (spo2Match) result.vitalSign.saturasiOksigen = parseInt(spo2Match[2] || spo2Match[1], 10);
-  const tempMatch = text.match(/suhu\s*(?:tubuh|badan)?\s*[:-]?\s*(\d{2}[.,]\d{1,2})\s*°?\s*c/) || text.match(/(\d{2}[.,]\d{1,2})\s*°?\s*c\b/);
-  if (tempMatch) result.vitalSign.suhuTubuh = parseFloat(tempMatch[1].replace(",", "."));
+  // Kalau narasi cuma menyebut suhu dalam Fahrenheit (tanpa Celsius eksplisit),
+  // konversi ke Celsius supaya field suhuTubuh (selalu dalam Celsius) tidak
+  // diam-diam jatuh ke default 36.5 padahal sebenarnya disebutkan.
+  const tempCelsiusMatch =
+    text.match(/suhu\s*(?:tubuh|badan)?\s*[:-]?\s*(\d{2}(?:[.,]\d{1,2})?)\s*°?\s*c\b/) ||
+    text.match(/(\d{2}[.,]\d{1,2})\s*°?\s*c\b/);
+  if (tempCelsiusMatch) {
+    result.vitalSign.suhuTubuh = parseFloat(tempCelsiusMatch[1].replace(",", "."));
+  } else {
+    const tempFahrenheitMatch =
+      text.match(/suhu\s*(?:tubuh|badan)?\s*[:-]?\s*(\d{2,3}(?:[.,]\d{1,2})?)\s*°?\s*f\b/) ||
+      text.match(/(\d{2,3}[.,]\d{1,2})\s*°?\s*f\b/);
+    if (tempFahrenheitMatch) {
+      const fahrenheit = parseFloat(tempFahrenheitMatch[1].replace(",", "."));
+      result.vitalSign.suhuTubuh = Math.round(((fahrenheit - 32) * 5 / 9) * 10) / 10;
+    }
+  }
 
   const foundSkala = findPainScale(text);
   if (foundSkala !== null) {
@@ -272,6 +287,7 @@ Aturan:
 - riwayatPenyakit HANYA boleh berisi nilai dari daftar berikut, pilih yang relevan (boleh lebih dari satu, kosongkan [] bila tidak disebutkan): ${HISTORIC_DISEASES.join(", ")}.
 - riwayatPenyakitLainnya: tulis riwayat penyakit/bedah/kondisi lain yang disebutkan namun tidak ada di daftar di atas, pisahkan dengan koma. Kosongkan "" bila tidak ada.
 - painScale.skala: angka 0-10 sesuai intensitas nyeri yang disebutkan; 0 bila tidak disebutkan nyeri.
+- vitalSign.suhuTubuh WAJIB dalam Celsius. Bila narasi menyebutkan suhu dalam Fahrenheit (°F), konversi ke Celsius dengan rumus (F-32)*5/9 sebelum ditulis ke field ini.
 - Bila suatu data tidak disebutkan dalam narasi, gunakan nilai default wajar (mis. GCS E4V5M6, AVPU Alert, suhu 36.5).
 
 Output WAJIB JSON valid dengan struktur persis berikut (tanpa markdown, tanpa penjelasan tambahan):

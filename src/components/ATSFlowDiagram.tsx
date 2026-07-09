@@ -163,33 +163,85 @@ export default function ATSFlowDiagram() {
     }
   ];
 
-  const colorClasses: Record<string, { chip: string; ring: string; laneIcon: string; laneText: string }> = {
+  const colorClasses: Record<string, { ring: string; laneIcon: string; laneText: string }> = {
     sky: {
-      chip: "border-sky-150 bg-sky-50 text-sky-700 dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-400",
       ring: "ring-sky-400 dark:ring-sky-700",
       laneIcon: "bg-sky-100 text-sky-600 dark:bg-sky-950 dark:text-sky-400",
       laneText: "text-sky-600 dark:text-sky-400"
     },
     violet: {
-      chip: "border-violet-150 bg-violet-50 text-violet-700 dark:border-violet-900/40 dark:bg-violet-950/20 dark:text-violet-400",
       ring: "ring-violet-400 dark:ring-violet-700",
       laneIcon: "bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-400",
       laneText: "text-violet-600 dark:text-violet-400"
     },
     rose: {
-      chip: "border-rose-150 bg-rose-50 text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-400",
       ring: "ring-rose-400 dark:ring-rose-700",
       laneIcon: "bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400",
       laneText: "text-rose-600 dark:text-rose-400"
     }
   };
 
-  // Warna per-langkah di dalam Tahap 2 dipertahankan berbeda (amber/violet/emerald)
-  // karena rule vs AI vs merge memang tiga jenis proses yang berbeda secara nyata.
-  const stepAccent: Record<number, string> = {
-    5: "border-amber-150 bg-amber-50 text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-400",
-    6: "border-violet-150 bg-violet-50 text-violet-700 dark:border-violet-900/40 dark:bg-violet-950/20 dark:text-violet-400",
-    7: "border-emerald-150 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-400"
+  // Tiap proses dapat warna sendiri supaya panah alurnya terbaca sebagai
+  // rangkaian 8 proses berbeda, bukan sekadar kartu. Tahap 2 (rule/AI/merge)
+  // sengaja dapat warna dengan makna semantik: amber = peringatan/pengaman,
+  // violet = komputasi AI, emerald = hasil yang sudah diverifikasi aman.
+  const stepColors: Record<number, { chip: string; ring: string; link: string; arrow: string }> = {
+    1: {
+      chip: "border-blue-150 bg-blue-50 text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-400",
+      ring: "ring-blue-400 dark:ring-blue-700",
+      link: "text-blue-600 dark:text-blue-400",
+      arrow: "text-blue-400 dark:text-blue-600"
+    },
+    2: {
+      chip: "border-cyan-150 bg-cyan-50 text-cyan-700 dark:border-cyan-900/40 dark:bg-cyan-950/20 dark:text-cyan-400",
+      ring: "ring-cyan-400 dark:ring-cyan-700",
+      link: "text-cyan-600 dark:text-cyan-400",
+      arrow: "text-cyan-400 dark:text-cyan-600"
+    },
+    3: {
+      chip: "border-teal-150 bg-teal-50 text-teal-700 dark:border-teal-900/40 dark:bg-teal-950/20 dark:text-teal-400",
+      ring: "ring-teal-400 dark:ring-teal-700",
+      link: "text-teal-600 dark:text-teal-400",
+      arrow: "text-teal-400 dark:text-teal-600"
+    },
+    4: {
+      chip: "border-indigo-150 bg-indigo-50 text-indigo-700 dark:border-indigo-900/40 dark:bg-indigo-950/20 dark:text-indigo-400",
+      ring: "ring-indigo-400 dark:ring-indigo-700",
+      link: "text-indigo-600 dark:text-indigo-400",
+      arrow: "text-indigo-400 dark:text-indigo-600"
+    },
+    5: {
+      chip: "border-amber-150 bg-amber-50 text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-400",
+      ring: "ring-amber-400 dark:ring-amber-700",
+      link: "text-amber-600 dark:text-amber-400",
+      arrow: "text-amber-400 dark:text-amber-600"
+    },
+    6: {
+      chip: "border-violet-150 bg-violet-50 text-violet-700 dark:border-violet-900/40 dark:bg-violet-950/20 dark:text-violet-400",
+      ring: "ring-violet-400 dark:ring-violet-700",
+      link: "text-violet-600 dark:text-violet-400",
+      arrow: "text-violet-400 dark:text-violet-600"
+    },
+    7: {
+      chip: "border-emerald-150 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-400",
+      ring: "ring-emerald-400 dark:ring-emerald-700",
+      link: "text-emerald-600 dark:text-emerald-400",
+      arrow: "text-emerald-400 dark:text-emerald-600"
+    },
+    8: {
+      chip: "border-rose-150 bg-rose-50 text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-400",
+      ring: "ring-rose-400 dark:ring-rose-700",
+      link: "text-rose-600 dark:text-rose-400",
+      arrow: "text-rose-400 dark:text-rose-600"
+    }
+  };
+
+  // Setiap lane punya jumlah langkah tetap (4 / 3 / 1) — dipetakan ke kelas grid
+  // responsif secara eksplisit karena Tailwind butuh nama kelas literal di source.
+  const gridColsByCount: Record<number, string> = {
+    1: "grid-cols-1",
+    3: "grid-cols-1 sm:grid-cols-3",
+    4: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
   };
 
   const allSteps = lanes.flatMap((lane) => lane.steps);
@@ -241,14 +293,11 @@ export default function ATSFlowDiagram() {
                   </div>
                 </div>
 
-                <div
-                  className="grid gap-3"
-                  style={{ gridTemplateColumns: `repeat(${lane.steps.length}, minmax(0, 1fr))` }}
-                >
+                <div className={`grid gap-3 ${gridColsByCount[lane.steps.length]}`}>
                   {lane.steps.map((step, idx) => {
                     const IconComp = step.icon;
                     const isSelected = activeStep === step.id;
-                    const accent = stepAccent[step.id] || palette.chip;
+                    const colors = stepColors[step.id];
 
                     return (
                       <div key={step.id} className="relative flex flex-col justify-between">
@@ -257,7 +306,7 @@ export default function ATSFlowDiagram() {
                           onClick={() => setActiveStep(isSelected ? null : step.id)}
                           className={`w-full p-3.5 rounded-2xl border text-left cursor-pointer transition-all hover:scale-[1.01] hover:shadow-2xs h-full flex flex-col justify-between ${
                             isSelected
-                              ? `${accent} ring-2 ${palette.ring} scale-[1.01]`
+                              ? `${colors.chip} ring-2 ${colors.ring} scale-[1.01]`
                               : "border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
                           }`}
                         >
@@ -274,18 +323,23 @@ export default function ATSFlowDiagram() {
                             {step.desc}
                           </p>
 
-                          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[9px] font-bold text-indigo-600 dark:text-indigo-400">
+                          <div className={`mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[9px] font-bold ${colors.link}`}>
                             <span>Lihat rincian</span>
                             <ChevronDown size={10} className={`transform transition-transform ${isSelected ? "rotate-180" : ""}`} />
                           </div>
                         </button>
 
-                        {/* Connector to the next card in the same lane only — every lane's
-                            column count matches its step count, so no wrap ever hides an arrow. */}
+                        {/* Flow arrow to the next process, colored to match the step it
+                            leaves — horizontal on wide layouts, vertical when stacked. */}
                         {idx < lane.steps.length - 1 && (
-                          <div className="hidden md:flex absolute top-1/2 -right-2 transform -translate-y-1/2 z-10 text-slate-300 dark:text-slate-700 pointer-events-none">
-                            <ArrowRight size={12} className="stroke-2" />
-                          </div>
+                          <>
+                            <div className={`sm:hidden flex justify-center py-1 ${colors.arrow}`}>
+                              <ArrowDown size={18} className="stroke-[2.5]" />
+                            </div>
+                            <div className={`hidden sm:flex absolute top-1/2 -right-[18px] -translate-y-1/2 z-10 ${colors.arrow}`}>
+                              <ArrowRight size={20} className="stroke-[2.5]" />
+                            </div>
+                          </>
                         )}
                       </div>
                     );
@@ -293,8 +347,8 @@ export default function ATSFlowDiagram() {
                 </div>
 
                 {laneIdx < lanes.length - 1 && (
-                  <div className="flex items-center justify-center py-2 text-slate-300 dark:text-slate-700">
-                    <ArrowDown size={16} className="stroke-2" />
+                  <div className="flex items-center justify-center py-2 text-slate-400 dark:text-slate-600">
+                    <ArrowDown size={22} className="stroke-[2.5]" />
                   </div>
                 )}
               </div>
