@@ -333,7 +333,7 @@ export async function classifyTriage(record: any, aiProvider?: string, aiModel?:
   let finalWarnings = toStringArray(aiResult.warningConditions || aiResult.kondisiPeringatan || aiResult.redFlags);
   let finalEmergency = Boolean(aiResult.emergencyIndicator || ruleResult.emergency);
 
-  if (ruleResult.overrideLevel && ruleResult.overrideLevel < finalAtsLevel) {
+  if (ruleResult.overrideLevel && ruleResult.overrideLevel <= 3 && ruleResult.overrideLevel < finalAtsLevel) {
     finalAtsLevel = ruleResult.overrideLevel;
     finalWarnings = [...ruleResult.warnings, ...finalWarnings];
     finalEmergency = true;
