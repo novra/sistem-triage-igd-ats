@@ -62,12 +62,10 @@ Output WAJIB JSON valid:
   "confidenceScore": <0-100>,
   "warningConditions": [<string>],
   "emergencyIndicator": <boolean>,
-  "alasanKlasifikasi": "<alasan klinis yang mendukung kategori ATS dalam Bahasa Indonesia>",
-  "informasiKlinisDigunakan": [<keluhan utama, tanda vital, kesadaran, jalan napas, pernapasan, sirkulasi, nyeri, mekanisme cedera, faktor risiko, komorbid, dan pemeriksaan fisik relevan yang benar-benar dipakai>],
-  "informasiTambahanDiperlukan": [<data tambahan yang masih perlu dikaji jika data belum cukup; kosongkan [] bila sudah cukup>],
+  "alasanKlasifikasi": "<alasan klinis singkat yang mendukung kategori ATS dalam Bahasa Indonesia>",
   "rekomendasiAwal": [<string>]
 }
-`;
+Jangan sertakan field lain selain di atas. Jangan tulis penjelasan/reasoning di luar objek JSON.`;
 }
 
 const atsCategoryLabels: Record<number, string> = {
@@ -97,6 +95,36 @@ function readAtsLevel(value: any): 1 | 2 | 3 | 4 | 5 | null {
       value?.kategoriAts ??
       value?.kategori_ats,
   );
+}
+
+function parseJsonPayloads(text: string) {
+  const candidates = [text.trim()];
+  const fencedBlocks = Array.from(text.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)).map((match) => match[1]?.trim()).filter(Boolean);
+  candidates.push(...fencedBlocks);
+
+  for (const opening of ["{", "["]) {
+    const closing = opening === "{" ? "}" : "]";
+    let start = -1;
+    let depth = 0;
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i];
+      if (char === opening) {
+        if (depth === 0) start = i;
+        depth += 1;
+      } else if (char === closing && depth > 0) {
+        depth -= 1;
+        if (depth === 0 && start >= 0) candidates.push(text.slice(start, i + 1));
+      }
+    }
+  }
+
+  return candidates.flatMap((candidate) => {
+    try {
+      return [JSON.parse(candidate)];
+    } catch {
+      return [];
+    }
+  });
 }
 
 function toStringArray(value: unknown): string[] {
@@ -186,11 +214,9 @@ async function classifyWithGemini(promptText: string) {
           warningConditions: { type: Type.ARRAY, items: { type: Type.STRING } },
           emergencyIndicator: { type: Type.BOOLEAN },
           alasanKlasifikasi: { type: Type.STRING },
-          informasiKlinisDigunakan: { type: Type.ARRAY, items: { type: Type.STRING } },
-          informasiTambahanDiperlukan: { type: Type.ARRAY, items: { type: Type.STRING } },
           rekomendasiAwal: { type: Type.ARRAY, items: { type: Type.STRING } },
         },
-        required: ["atsLevel", "atsCategory", "confidenceScore", "warningConditions", "emergencyIndicator", "alasanKlasifikasi", "informasiKlinisDigunakan", "informasiTambahanDiperlukan", "rekomendasiAwal"],
+        required: ["atsLevel", "atsCategory", "confidenceScore", "warningConditions", "emergencyIndicator", "alasanKlasifikasi", "rekomendasiAwal"],
       },
     },
   });
@@ -231,12 +257,11 @@ function extractTriagePrediction(payload: any, depth = 0): any {
   if (!payload || depth > 6) return null;
 
   if (typeof payload === "string") {
-    const rawJson = payload.match(/\{[\s\S]*\}/)?.[0] || payload.match(/\[[\s\S]*\]/)?.[0] || payload;
-    try {
-      return extractTriagePrediction(JSON.parse(rawJson), depth + 1);
-    } catch {
-      return null;
+    for (const parsedPayload of parseJsonPayloads(payload)) {
+      const parsed = extractTriagePrediction(parsedPayload, depth + 1);
+      if (parsed) return parsed;
     }
+    return null;
   }
 
   if (Array.isArray(payload)) {
@@ -277,6 +302,9 @@ async function classifyWithRunPod(promptText: string, record: any, ruleResult: R
   const targetUrl = usesOpenAiCompatibleEndpoint && !/\/chat\/completions\/?$/i.test(env.customModelUrl)
     ? `${env.customModelUrl.replace(/\/$/, "")}/chat/completions`
     : env.customModelUrl;
+  // Qwen3 defaults to "thinking" mode, which can burn the whole max_tokens budget on
+  // reasoning tokens before ever emitting the JSON answer. enable_thinking:false keeps
+  // the full budget for the actual JSON output.
   const requestBody = usesOpenAiCompatibleEndpoint
     ? {
         model: env.runpodVllmModel,
@@ -284,16 +312,24 @@ async function classifyWithRunPod(promptText: string, record: any, ruleResult: R
           { role: "system", content: "Anda adalah pakar triase medis emergensi. Balas hanya JSON valid tanpa markdown." },
           { role: "user", content: promptText },
         ],
-        max_tokens: 1200,
+        max_tokens: 3000,
         temperature: 0.1,
         stream: false,
         response_format: { type: "json_object" },
+        chat_template_kwargs: { enable_thinking: false },
       }
     : {
         input: {
           record,
           ruleResult,
+          prompt: promptText,
           promptText,
+          max_tokens: 3000,
+          chat_template_kwargs: { enable_thinking: false },
+          messages: [
+            { role: "system", content: "Anda adalah pakar triase medis emergensi. Balas hanya JSON valid tanpa markdown." },
+            { role: "user", content: promptText },
+          ],
         },
       };
 
@@ -308,8 +344,17 @@ async function classifyWithRunPod(promptText: string, record: any, ruleResult: R
   if (!response.ok) throw new Error(`RunPod API returned status ${response.status}`);
 
   const data = await response.json();
+  if (data?.status === "FAILED" || data?.error) {
+    throw new Error(`RunPod model failed: ${data?.error || data?.status}`);
+  }
   const parsed = extractTriagePrediction(data);
-  if (!parsed) throw new Error("RunPod model returned data, but atsLevel was not structured properly.");
+  if (!parsed) {
+    console.error("RunPod ATS parse failure", {
+      finishReason: data?.choices?.[0]?.finish_reason,
+      rawResponse: JSON.stringify(data).slice(0, 3000),
+    });
+    throw new Error("RunPod model returned data, but atsLevel was not structured properly.");
+  }
 
   return {
     parsed,
