@@ -20,6 +20,7 @@ export function generateIGDReportPDF(data: TriageRecord) {
   const lightBg = [248, 250, 252]; // Slate 50
   const borderColor = [226, 232, 240]; // Slate 200
   const valueOrDash = (value: unknown) => value === 0 || Boolean(value) ? String(value) : "-";
+  const titleCase = (value: string) => value.replace(/\b\w/g, (c) => c.toUpperCase());
   const providerName = data.atsPrediction?.providerUsed || "Berbasis Aturan Klinis";
   const modelName = data.atsPrediction?.modelUsed || "Clinical Safety Rules v1";
 
@@ -33,22 +34,22 @@ export function generateIGDReportPDF(data: TriageRecord) {
     doc.setTextColor(15, 23, 42);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("KEMENTERIAN KESEHATAN REPUBLIK INDONESIA", 15, 12);
+    doc.text("RUMAH SAKIT [Nama Rumah Sakit]", 15, 12);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text("INSTALASI GAWAT DARURAT (IGD) - UNIT TRIASE UTAMA", 15, 16);
-    doc.text("Sistem Pendukung Keputusan Klinis Berbasis Kecerdasan Buatan (AI-CDSS)", 15, 20);
+    doc.text("Instalasi Gawat Darurat (IGD) - Unit Triase", 15, 16);
+    doc.text("Sistem Pendukung Keputusan Klinis (AI-CDSS)", 15, 20);
 
     // Document Name Center/Right
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(79, 70, 229);
-    doc.text("REKAM ASESMEN & KLASIFIKASI TRIASE IGD", 112, 12);
+    doc.text("FORMULIR TRIASE GAWAT DARURAT", 112, 12);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
-    doc.text("Standar Australasian Triage Scale (ATS) Indonesia", 112, 16);
-    doc.text("Dicetak otomatis melalui Portal RME Triase", 112, 20);
+    doc.text("Asesmen Awal & Klasifikasi Berdasarkan ATS", 112, 16);
+    doc.text("Dokumen Rekam Medis Elektronik - Dicetak Otomatis", 112, 20);
 
     // Thick black line below header
     doc.setDrawColor(15, 23, 42);
@@ -120,8 +121,8 @@ export function generateIGDReportPDF(data: TriageRecord) {
   doc.text("Tanggal Lahir / Umur:", 18, 54);
   
   doc.text("Jenis Kelamin:", 108, 38);
-  doc.text("Kunjungan / Kedatangan:", 108, 46);
-  doc.text("Cara Kedatangan:", 108, 54);
+  doc.text("Tgl & Jam Kedatangan:", 108, 46);
+  doc.text("Cara Datang:", 108, 54);
 
   // Dynamic values
   doc.setFont("helvetica", "bold");
@@ -236,22 +237,25 @@ export function generateIGDReportPDF(data: TriageRecord) {
   doc.text(`${sys}/${dia} mmHg`, 18, 119);
   doc.text(`${valueOrDash(data.vitalSign?.heartRate)} x/menit`, 63, 119);
   doc.text(`${valueOrDash(data.vitalSign?.respiratoryRate)} x/menit`, 108, 119);
-  doc.text(`${valueOrDash(data.vitalSign?.suhuTubuh)} C`, 153, 119);
+  doc.text(`${valueOrDash(data.vitalSign?.suhuTubuh)} °C`, 153, 119);
 
   // Row 2 values
   doc.text(`${valueOrDash(data.vitalSign?.saturasiOksigen)} %`, 18, 131);
   doc.text(`${data.vitalSign?.avpu || "Alert"}`, 63, 131);
-  doc.text(`${data.vitalSign?.polaNapas || "reguler"}`, 108, 131);
+  const polaNapasStr = data.vitalSign?.polaNapas === "irreguler" ? "Ireguler / Tidak Teratur" : "Reguler / Teratur";
+  clippedText(polaNapasStr, 108, 131, 39);
   const painScaleVal = data.painScale?.skala || 0;
-  clippedText(`${painScaleVal} / 10 (${data.painScale?.kategori || "tidak nyeri"})`, 153, 131, 39);
+  clippedText(`${painScaleVal} / 10 (${titleCase(data.painScale?.kategori || "tidak nyeri")})`, 153, 131, 39);
 
   // Row 3 values
   const g = data.vitalSign?.gcs;
   const gcsStr = g ? `E${g.eye || 4} V${g.verbal || 5} M${g.motor || 6} (Skor: ${(g.eye||4)+(g.verbal||5)+(g.motor||6)})` : "E4 V5 M6 (15)";
   clippedText(gcsStr, 18, 143, 40);
-  const stridor = data.vitalSign?.stridor ? "Stridor " : "";
-  const wheezing = data.vitalSign?.wheezing ? "Wheezing" : "";
-  clippedText(stridor + wheezing || "Normal / Vesikuler", 63, 143, 40);
+  const napasTambahan = [
+    data.vitalSign?.stridor ? "Stridor" : null,
+    data.vitalSign?.wheezing ? "Wheezing" : null
+  ].filter(Boolean);
+  clippedText(napasTambahan.length > 0 ? napasTambahan.join(", ") : "Normal / Vesikuler", 63, 143, 40);
   clippedText(data.vitalSign?.retraksi || data.pemeriksaanFisik?.dada?.retraksi ? "Ya, Retraksi" : "Tidak Ada", 108, 143, 40);
   clippedText(data.vitalSign?.ototBantuNapas || data.pemeriksaanFisik?.dada?.penggunaanOtotBantuNapas ? "Ya" : "Tidak", 153, 143, 39);
 
@@ -303,9 +307,9 @@ export function generateIGDReportPDF(data: TriageRecord) {
   if (kep?.kejang) kepList.push("Kejang");
   if (kep?.sianosis) kepList.push("Sianosis");
   if (kep?.penurunanKesadaran) kepList.push("Penurunan Kesadaran");
-  if (kep?.deformitas) kepList.push("Deformitas kepala");
+  if (kep?.deformitas) kepList.push("Deformitas Kepala");
   clippedText(
-    kepList.length > 0 ? `Abnormal: ${kepList.join(", ")}` : "Normal (Tidak ada tanda trauma, kejang, perdarahan, atau penyimpangan pupil)",
+    kepList.length > 0 ? `Abnormal: ${kepList.join(", ")}` : "Normal (Tidak ada tanda trauma, kejang, perdarahan, atau kelainan pupil)",
     58,
     171,
     135,
@@ -319,9 +323,9 @@ export function generateIGDReportPDF(data: TriageRecord) {
   if (leh?.deviasiTrakea) lehList.push("Deviasi Trakea");
   if (leh?.distensiVenaJugularis) lehList.push("JVP Meningkat");
   if (leh?.kakuKuduk) lehList.push("Kaku Kuduk");
-  if (leh?.traumaLeher) lehList.push("Trauma cervical/leher");
+  if (leh?.traumaLeher) lehList.push("Trauma Servikal/Leher");
   clippedText(
-    lehList.length > 0 ? `Abnormal: ${lehList.join(", ")}` : "Normal (Trakea simetris di tengah, tekanan vena jugular normal, tidak kaku kuduk)",
+    lehList.length > 0 ? `Abnormal: ${lehList.join(", ")}` : "Normal (Trakea simetris di tengah, tekanan vena jugularis normal, tidak kaku kuduk)",
     58,
     183,
     135,
@@ -333,11 +337,11 @@ export function generateIGDReportPDF(data: TriageRecord) {
   const dad = data.pemeriksaanFisik?.dada;
   const dadList = [];
   if (dad?.nyeriDada) dadList.push("Nyeri Dada Khas Angina/Iskemik");
-  if (dad?.asimetriDindingDada) dadList.push("Asimetri Dada");
+  if (dad?.asimetriDindingDada) dadList.push("Asimetri Dinding Dada");
   if (dad?.ronki) dadList.push("Ronki");
   if (dad?.wheezing) dadList.push("Wheezing");
   if (dad?.suaraNapasMenurun) dadList.push("Suara Napas Menurun");
-  if (dad?.distressRespirasi) dadList.push("Sesak / Gawat Napas");
+  if (dad?.distressRespirasi) dadList.push("Distres Respirasi Berat");
   clippedText(
     dadList.length > 0 ? `Abnormal: ${dadList.join(", ")}` : "Normal (Pengembangan dada simetris, suara napas vesikuler di kedua lapangan paru, bunyi jantung S1 S2 tunggal)",
     58,
@@ -350,14 +354,14 @@ export function generateIGDReportPDF(data: TriageRecord) {
   // Abdomen findings
   const ab = data.pemeriksaanFisik?.perut;
   const abList = [];
-  if (ab?.distensiAbdomen) abList.push("Abdomen Distensi");
+  if (ab?.distensiAbdomen) abList.push("Distensi Abdomen");
   if (ab?.nyeriTekan) abList.push("Nyeri Tekan Abdomen");
   if (ab?.defenseMuscular) abList.push("Defans Muskular");
   if (ab?.muntah) abList.push("Muntah Proyektil/Aktif");
   if (ab?.rigidAbdomen) abList.push("Perut Papan/Rigiditas");
   if (ab?.nyeriKuadranKananBawah) abList.push("Nyeri McBurney (Kuadran Kanan Bawah)");
   clippedText(
-    abList.length > 0 ? `Abnormal: ${abList.join(", ")}` : "Normal (Perut supel, bising usus normal, turgor kulit elastis, tidak ada defense muscular)",
+    abList.length > 0 ? `Abnormal: ${abList.join(", ")}` : "Normal (Perut supel, bising usus normal, turgor kulit elastis, tidak ada defans muskular)",
     58,
     207,
     135,
@@ -371,8 +375,8 @@ export function generateIGDReportPDF(data: TriageRecord) {
   const eksList = [];
   if (eksA?.kelemahanMotorik || eksB?.kelemahanMotorik) eksList.push("Kelemahan Motorik / Hemiparese");
   if (eksA?.perfusiBuruk || eksB?.perfusiBuruk) eksList.push("Perfusi dingin/basah/buruk (Capillary Refill > 2 detik)");
-  if (eksA?.edema || eksB?.edema) eksList.push("Edema ekstremitas");
-  if (eksA?.perdarahanAktif || eksB?.perdarahanAktif) eksList.push("Perdarahan Aktif hebat");
+  if (eksA?.edema || eksB?.edema) eksList.push("Edema Ekstremitas");
+  if (eksA?.perdarahanAktif || eksB?.perdarahanAktif) eksList.push("Perdarahan Aktif Hebat");
   clippedText(
     eksList.length > 0 ? `Abnormal: ${eksList.join(", ")}` : "Normal (Perfusi hangat, kering, merah. Capillary Refill Time < 2 detik, gerakan motorik utuh tanpa parese)",
     58,
@@ -611,7 +615,7 @@ export function generateIGDReportPDF(data: TriageRecord) {
   doc.setFontSize(7);
   doc.setTextColor(100, 116, 139);
   clippedText("Hasil triase ini adalah bagian dari lembar rekam medis elektronik (RME)", 18, 244, 84);
-  clippedText("yang diatur oleh Kementerian Kesehatan Peraturan No. 24 Tahun 2022.", 18, 248, 84);
+  clippedText("sesuai Permenkes RI Nomor 24 Tahun 2022 tentang Rekam Medis.", 18, 248, 84);
   clippedText("Sistem pendukung keputusan triase ini berperan sebagai alat bantu,", 18, 252, 84);
   clippedText("di mana kewenangan dan pertanggungjawaban asuhan klinis mutlak berada", 18, 256, 84);
   clippedText("pada tenaga medis yang membubuhkan tanda tangan verifikasi fisik / digital.", 18, 260, 84);
@@ -621,7 +625,7 @@ export function generateIGDReportPDF(data: TriageRecord) {
   doc.setFontSize(8);
   doc.setTextColor(15, 23, 42);
   const signDateStr = data.tanggalKunjungan ? data.tanggalKunjungan : new Date().toLocaleDateString("id-ID");
-  clippedText(`Kota Administrasi, Tanggal ${signDateStr}`, 110, 239, 82);
+  clippedText(`......................, ${signDateStr}`, 110, 239, 82);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.text("Verifikator Penanggung Jawab Triase,", 110, 243);
@@ -645,11 +649,13 @@ export function generateIGDReportPDF(data: TriageRecord) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(5.5);
   doc.setTextColor(148, 163, 184);
-  doc.text("TANDA TANGAN VERIFIKASI", 158, 246);
-  doc.text("SESUAI RME INTEGRASI KEMKES", 157, 249);
-  doc.text("ID TRIASE KEMKES-ATS-9921", 157, 253);
+  doc.text("TANDA TANGAN & STEMPEL", 160, 246);
+  doc.text("VERIFIKATOR IGD", 168, 249);
+  const docId = data.id || data.nomorRM || "-";
+  doc.setFontSize(5);
+  clippedText(`ID Dokumen: ${docId}`, 157, 254, 30);
   doc.setFont("helvetica", "normal");
-  doc.text("Kewenangan klinis sah v1.2", 158, 261);
+  doc.text("Rekam Medis Elektronik (RME)", 158, 261);
 
   drawFooter(2, 2);
 
