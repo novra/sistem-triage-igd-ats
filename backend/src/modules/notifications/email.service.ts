@@ -10,6 +10,18 @@ function getClient(): Resend | null {
   return resendClient;
 }
 
+// Bungkus fragment HTML jadi dokumen penuh yang wajar (bukan cuma potongan <p> lepas) —
+// filter spam menilai email yang strukturnya tidak lengkap/aneh lebih curiga.
+function wrapHtml(bodyHtml: string): string {
+  return `<!DOCTYPE html>
+<html lang="id">
+  <head><meta charset="utf-8" /></head>
+  <body style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1f2937; line-height: 1.6;">
+    ${bodyHtml}
+  </body>
+</html>`;
+}
+
 // Best-effort: kegagalan kirim email TIDAK BOLEH menggagalkan pembuatan/reset user.
 // Kalau RESEND_API_KEY belum diset, cukup diam-diam dilewati (admin sudah tahu
 // password awal/baru karena dia sendiri yang mengetiknya).
@@ -17,6 +29,7 @@ async function sendCredentialEmail(input: {
   to: string;
   subject: string;
   bodyHtml: string;
+  bodyText: string;
   context: string;
 }): Promise<boolean> {
   const client = getClient();
@@ -34,7 +47,11 @@ async function sendCredentialEmail(input: {
       from: env.emailFrom,
       to: input.to,
       subject: input.subject,
-      html: input.bodyHtml,
+      html: wrapHtml(input.bodyHtml),
+      // Versi teks polos di samping HTML — email multipart (html+text) jauh lebih jarang
+      // ditandai spam dibanding yang cuma HTML, karena spam murni HTML lebih umum dipakai
+      // untuk menyembunyikan konten dari filter.
+      text: input.bodyText,
     });
     if (error) {
       logger.error({ err: error, to: input.to, context: input.context }, "Resend menolak pengiriman email");
@@ -64,14 +81,25 @@ export function sendWelcomeEmail(input: { to: string; name: string; tempPassword
   return sendCredentialEmail({
     to: input.to,
     context: "welcome-email",
-    subject: "Akun Sistem Triage IGD ATS Anda",
+    subject: "Akun Sistem Triage IGD ATS Anda sudah aktif",
     bodyHtml: `
       <p>Halo ${input.name},</p>
       <p>Akun Anda telah dibuat di Sistem Triage IGD ATS.</p>
-      <p><b>Email:</b> ${input.to}<br/><b>Password sementara:</b> ${input.tempPassword}</p>
-      <p>Anda akan diminta mengganti password ini saat pertama kali login.</p>
+      <p>Email: ${input.to}<br/>Password sementara: <b>${input.tempPassword}</b></p>
+      <p>Anda akan diminta mengganti password ini saat login pertama kali.</p>
       <p><a href="${env.appUrl}">${env.appUrl}</a></p>
     `,
+    bodyText: [
+      `Halo ${input.name},`,
+      "",
+      "Akun Anda telah dibuat di Sistem Triage IGD ATS.",
+      `Email: ${input.to}`,
+      `Password sementara: ${input.tempPassword}`,
+      "",
+      "Anda akan diminta mengganti password ini saat login pertama kali.",
+      "",
+      env.appUrl,
+    ].join("\n"),
   });
 }
 
@@ -79,14 +107,25 @@ export function sendPasswordResetEmail(input: { to: string; name: string; tempPa
   return sendCredentialEmail({
     to: input.to,
     context: "password-reset-email",
-    subject: "Password Akun Sistem Triage IGD ATS Anda Direset",
+    subject: "Password akun Sistem Triage IGD ATS Anda diperbarui",
     bodyHtml: `
       <p>Halo ${input.name},</p>
-      <p>Password akun Anda di Sistem Triage IGD ATS baru saja direset oleh admin.</p>
-      <p><b>Password sementara:</b> ${input.tempPassword}</p>
+      <p>Password akun Anda di Sistem Triage IGD ATS baru saja diperbarui oleh admin.</p>
+      <p>Password sementara: <b>${input.tempPassword}</b></p>
       <p>Anda akan diminta mengganti password ini saat login berikutnya.</p>
-      <p>Kalau Anda tidak meminta reset ini, segera hubungi admin sistem.</p>
+      <p>Kalau Anda tidak meminta perubahan ini, hubungi admin sistem.</p>
       <p><a href="${env.appUrl}">${env.appUrl}</a></p>
     `,
+    bodyText: [
+      `Halo ${input.name},`,
+      "",
+      "Password akun Anda di Sistem Triage IGD ATS baru saja diperbarui oleh admin.",
+      `Password sementara: ${input.tempPassword}`,
+      "",
+      "Anda akan diminta mengganti password ini saat login berikutnya.",
+      "Kalau Anda tidak meminta perubahan ini, hubungi admin sistem.",
+      "",
+      env.appUrl,
+    ].join("\n"),
   });
 }
