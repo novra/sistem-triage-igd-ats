@@ -12,12 +12,14 @@ import {
   Trash2,
 } from "lucide-react";
 import { generateIGDReportPDF } from "../utils/pdfGenerator";
+import { apiFetch } from "../lib/api";
 
 interface RecordHistoryListProps {
   records: TriageRecord[];
   onSelectRecord: (record: TriageRecord) => void;
   onDeleteRecord: (id: string) => void;
   onExportDataset: () => void;
+  isAdmin: boolean;
 }
 
 export default function RecordHistoryList({
@@ -25,6 +27,7 @@ export default function RecordHistoryList({
   onSelectRecord,
   onDeleteRecord,
   onExportDataset,
+  isAdmin,
 }: RecordHistoryListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -269,7 +272,7 @@ export default function RecordHistoryList({
   const downloadMonitoringLog = async () => {
     setIsDownloadingLog(true);
     try {
-      const res = await fetch("/api/monitoring/export");
+      const res = await apiFetch("/api/monitoring/export");
       if (!res.ok) throw new Error(`Gagal mengunduh log monitoring (status ${res.status})`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -307,24 +310,28 @@ export default function RecordHistoryList({
             <span>Ekspor ke CSV/Excel</span>
           </button>
 
-          <button
-            id="btn-export-dataset"
-            onClick={onExportDataset}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-150 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
-          >
-            <FileJson size={14} />
-            <span>Ekspor JSON (NLP Dataset)</span>
-          </button>
+          {isAdmin && (
+            <button
+              id="btn-export-dataset"
+              onClick={onExportDataset}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-150 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+            >
+              <FileJson size={14} />
+              <span>Ekspor JSON (NLP Dataset)</span>
+            </button>
+          )}
 
-          <button
-            id="btn-download-monitoring-log"
-            onClick={downloadMonitoringLog}
-            disabled={isDownloadingLog}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm"
-          >
-            <Activity size={14} />
-            <span>{isDownloadingLog ? "Menyiapkan..." : "Unduh Log Monitoring (Excel)"}</span>
-          </button>
+          {isAdmin && (
+            <button
+              id="btn-download-monitoring-log"
+              onClick={downloadMonitoringLog}
+              disabled={isDownloadingLog}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm"
+            >
+              <Activity size={14} />
+              <span>{isDownloadingLog ? "Menyiapkan..." : "Unduh Log Monitoring (Excel)"}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -457,18 +464,20 @@ export default function RecordHistoryList({
                           >
                             <Edit3 size={15} />
                           </button>
-                          <button
-                            id={`btn-delete-rec-${record.id}`}
-                            onClick={() => {
-                              if (confirm("Apakah Anda yakin ingin menghapus rekam triage ini?")) {
-                                onDeleteRecord(record.id!);
-                              }
-                            }}
-                            className="p-1 text-slate-400 hover:text-rose-650 hover:bg-rose-50 rounded-lg transition"
-                            title="Hapus"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          {isAdmin && (
+                            <button
+                              id={`btn-delete-rec-${record.id}`}
+                              onClick={() => {
+                                if (confirm("Apakah Anda yakin ingin menghapus rekam triage ini?")) {
+                                  onDeleteRecord(record.id!);
+                                }
+                              }}
+                              className="p-1 text-slate-400 hover:text-rose-650 hover:bg-rose-50 rounded-lg transition"
+                              title="Hapus"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

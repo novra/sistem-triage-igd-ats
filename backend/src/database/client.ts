@@ -82,5 +82,28 @@ export async function initDatabase() {
     create index if not exists idx_system_events_created_at on system_events (created_at desc);
     create index if not exists idx_system_events_event_type on system_events (event_type);
     create index if not exists idx_system_events_level on system_events (level);
+
+    create table if not exists users (
+      id text primary key,
+      email text not null unique,
+      name text not null,
+      password_hash text not null,
+      role text not null default 'user' check (role in ('admin', 'user')),
+      is_active boolean not null default true,
+      must_change_password boolean not null default false,
+      created_by text references users(id),
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      last_login_at timestamptz
+    );
+
+    create index if not exists idx_users_email on users (lower(email));
+
+    alter table system_events add column if not exists user_id text references users(id) on delete set null;
+    alter table system_events add column if not exists user_email text;
+    create index if not exists idx_system_events_user_id on system_events (user_id);
+
+    alter table audit_logs add column if not exists user_id text references users(id) on delete set null;
+    alter table audit_logs add column if not exists user_email text;
   `);
 }

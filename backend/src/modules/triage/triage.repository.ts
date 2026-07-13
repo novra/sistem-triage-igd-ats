@@ -1,6 +1,9 @@
 import type { PoolClient } from "pg";
 import { query, withTransaction } from "../../database/client";
 import { createId } from "../../shared/ids";
+import { recordEvent } from "../monitoring/events.repository";
+
+type ActingUser = { id: string; email: string };
 
 function normalizeRecord(row: any) {
   const payload = row.payload_json || {};
@@ -116,17 +119,24 @@ function buildDbValues(record: any) {
   ];
 }
 
-async function insertAudit(client: PoolClient, recordId: string, action: string, userName: string, detail: any = {}) {
+async function insertAudit(
+  client: PoolClient,
+  recordId: string,
+  action: string,
+  userName: string,
+  detail: any = {},
+  actingUser?: ActingUser,
+) {
   await client.query(
     `
-      insert into audit_logs (id, record_id, user_name, action, detail_json)
-      values ($1, $2, $3, $4, $5::jsonb)
+      insert into audit_logs (id, record_id, user_name, action, detail_json, user_id, user_email)
+      values ($1, $2, $3, $4, $5::jsonb, $6, $7)
     `,
-    [createId("AUD"), recordId, userName || "Perawat Triage IGD", action, JSON.stringify(detail)]
+    [createId("AUD"), recordId, userName || "Perawat Triage IGD", action, JSON.stringify(detail), actingUser?.id || null, actingUser?.email || null]
   );
 }
 
-export async function saveRecord(input: any) {
+export async function saveRecord(input: any, actingUser?: ActingUser) {
   const timestamp = new Date().toISOString();
   return withTransaction(async (client) => {
     const id = input.id || createId("TRG");
@@ -163,13 +173,26 @@ export async function saveRecord(input: any) {
       [id, ...values]
     );
 
-    await insertAudit(client, id, action, record.atsFinal?.namaPetugas, { atsFinal: record.atsFinal || null });
+    await insertAudit(client, id, action, record.atsFinal?.namaPetugas, { atsFinal: record.atsFinal || null }, actingUser);
     const saved = await getRecordByIdWithClient(client, id);
     return saved || record;
   });
 }
 
-export async function deleteRecord(id: string) {
+export async function deleteRecord(id: string, actingUser?: ActingUser) {
+  const existing = await query("select patient_rm, patient_name from triage_records where id = $1", [id]);
+  if (!existing.rowCount) return false;
+
+  // audit_logs ikut cascade-delete bersama record, jadi jejak "siapa yang menghapus"
+  // harus ditulis ke system_events SEBELUM delete, bukan ke audit_logs.
+  recordEvent({
+    eventType: "triage_record_deleted",
+    level: "warn",
+    userId: actingUser?.id,
+    userEmail: actingUser?.email,
+    detail: { recordId: id, patientRm: existing.rows[0].patient_rm, patientName: existing.rows[0].patient_name },
+  });
+
   const result = await query("delete from triage_records where id = $1 returning id", [id]);
   return Boolean(result.rowCount);
 }

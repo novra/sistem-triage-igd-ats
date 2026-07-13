@@ -12,6 +12,7 @@ const logFile = path.join(logsDir, `app-${new Date().toISOString().slice(0, 10)}
 const redactPaths = [
   "req.body",
   "req.headers.authorization",
+  "req.headers.cookie",
   "payload",
   "record",
   "narrative",
@@ -20,6 +21,15 @@ const redactPaths = [
   "*.nomorRM",
   "*.patient_name",
   "*.patient_rm",
+  "password",
+  "password_hash",
+  "passwordHash",
+  "*.password",
+  "*.password_hash",
+  "*.passwordHash",
+  "*.currentPassword",
+  "*.newPassword",
+  "*.tempPassword",
 ];
 
 export const logger = pino({

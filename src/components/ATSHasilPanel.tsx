@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { TriageRecord, ATS_LEVEL_DETAILS } from "../types";
 import { ShieldAlert, AlertCircle, Save, Activity, FileText, CheckCircle2, UserCheck } from "lucide-react";
 import { generateIGDReportPDF } from "../utils/pdfGenerator";
+import { useAuth } from "../context/AuthContext";
 
 interface ATSHasilPanelProps {
   data: TriageRecord;
@@ -15,11 +16,12 @@ interface ATSHasilPanelProps {
 }
 
 export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelProps) {
+  const { user } = useAuth();
   const [overrideLevel, setOverrideLevel] = useState<number | "">("");
   const [reasonOverride, setReasonOverride] = useState("");
   const [showOverride, setShowOverride] = useState(false);
   const [namaPetugas, setNamaPetugas] = useState(() => {
-    return data.atsFinal?.namaPetugas || localStorage.getItem("triage_nama_petugas") || "";
+    return data.atsFinal?.namaPetugas || user?.name || localStorage.getItem("triage_nama_petugas") || "";
   });
   const [jabatanPetugas, setJabatanPetugas] = useState(() => {
     return data.atsFinal?.jabatanPetugas || localStorage.getItem("triage_jabatan_petugas") || "Perawat IGD";

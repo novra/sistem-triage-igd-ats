@@ -11,14 +11,16 @@ export type SystemEventInput = {
   durationMs?: number;
   message?: string;
   detail?: Record<string, unknown>;
+  userId?: string;
+  userEmail?: string;
 };
 
 // Fire-and-forget: kegagalan menulis event monitoring tidak boleh menggagalkan
 // request pengguna yang sedang berjalan (mis. proses triase pasien).
 export function recordEvent(input: SystemEventInput) {
   query(
-    `insert into system_events (id, event_type, level, provider, model, ats_level, duration_ms, message, detail_json)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)`,
+    `insert into system_events (id, event_type, level, provider, model, ats_level, duration_ms, message, detail_json, user_id, user_email)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11)`,
     [
       createId("EVT"),
       input.eventType,
@@ -29,6 +31,8 @@ export function recordEvent(input: SystemEventInput) {
       input.durationMs ?? null,
       input.message || null,
       JSON.stringify(input.detail || {}),
+      input.userId || null,
+      input.userEmail || null,
     ],
   ).catch((error) => {
     logger.error({ err: error, eventType: input.eventType }, "Failed to persist system event");

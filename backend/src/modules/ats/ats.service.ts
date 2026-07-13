@@ -365,7 +365,12 @@ async function classifyWithRunPod(promptText: string, record: any, ruleResult: R
   };
 }
 
-export async function classifyTriage(record: any, aiProvider?: string, aiModel?: string) {
+export async function classifyTriage(
+  record: any,
+  aiProvider?: string,
+  aiModel?: string,
+  actingUser?: { id: string; email: string },
+) {
   const startedAt = Date.now();
   const ruleResult = classifyByRules(record);
   const promptText = buildPrompt(record);
@@ -404,6 +409,8 @@ export async function classifyTriage(record: any, aiProvider?: string, aiModel?:
       durationMs: Date.now() - startedAt,
       message: error instanceof Error ? error.message : String(error),
       detail: { context: "classify" },
+      userId: actingUser?.id,
+      userEmail: actingUser?.email,
     });
   }
 
@@ -447,6 +454,8 @@ export async function classifyTriage(record: any, aiProvider?: string, aiModel?:
     atsLevel: finalAtsLevel,
     durationMs: Date.now() - startedAt,
     detail: { aiProviderRequested: aiProvider || "rulebased", aiFailed, ruleOverrode, emergencyIndicator: finalEmergency },
+    userId: actingUser?.id,
+    userEmail: actingUser?.email,
   });
 
   const clinicalInfo = [

@@ -8,6 +8,8 @@ export function errorHandler(error: any, req: Request, res: Response, _next: Nex
     level: "error",
     message: error?.message || "Terjadi kesalahan pada server",
     detail: { path: req.originalUrl, method: req.method, statusCode: error?.statusCode || 500 },
+    userId: req.user?.id,
+    userEmail: req.user?.email,
   });
   res.status(error?.statusCode || 500).json({
     error: error?.message || "Terjadi kesalahan pada server",

@@ -9,6 +9,10 @@ import ATSHasilPanel from "./components/ATSHasilPanel";
 import RecordHistoryList from "./components/RecordHistoryList";
 import ATSFlowDiagram from "./components/ATSFlowDiagram";
 import ImportTriageRecords from "./components/ImportTriageRecords";
+import UserManagementPage from "./components/UserManagementPage";
+import ChangePasswordModal from "./components/ChangePasswordModal";
+import { useAuth } from "./context/AuthContext";
+import { apiFetch } from "./lib/api";
 import {
   Activity,
   HeartHandshake,
@@ -25,7 +29,11 @@ import {
   Microscope,
   RotateCcw,
   Clock,
-  Cpu
+  Cpu,
+  LogOut,
+  Users,
+  KeyRound,
+  UserCircle2
 } from "lucide-react";
 
 const INITIAL_FORM: TriageRecord = {
@@ -313,6 +321,10 @@ const MOCK_PRESETS = [
 ];
 
 export default function App() {
+  const { user, logout } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [view, setView] = useState<"triage" | "users">("triage");
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [form, setForm] = useState<TriageRecord>({ ...INITIAL_FORM });
   const [records, setRecords] = useState<TriageRecord[]>([]);
@@ -384,7 +396,7 @@ export default function App() {
   // Fetch all database records
   const fetchRecords = async () => {
     try {
-      const res = await fetch("/api/triage/records");
+      const res = await apiFetch("/api/triage/records");
       if (res.ok) {
         const data = await res.json();
         setRecords(data);
@@ -430,7 +442,7 @@ export default function App() {
     setIsClassifying(true);
     setErrorMsg(null);
     try {
-      const response = await fetch("/api/triage/classify", {
+      const response = await apiFetch("/api/triage/classify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -482,7 +494,7 @@ export default function App() {
             }
       };
 
-      const response = await fetch("/api/triage/records", {
+      const response = await apiFetch("/api/triage/records", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(finalPayload),
@@ -512,7 +524,7 @@ export default function App() {
   // Delete triage record
   const handleDeleteTriageLog = async (id: string) => {
     try {
-      const res = await fetch(`/api/triage/records/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/triage/records/${id}`, { method: "DELETE" });
       if (res.ok) {
         fetchRecords();
         setSuccessMsg(`Rekam triase ${id} terhapus secara permanen.`);
@@ -526,7 +538,7 @@ export default function App() {
   // NLP dataset download
   const handleExportJsonDataset = async () => {
     try {
-      const res = await fetch("/api/triage/export");
+      const res = await apiFetch("/api/triage/export");
       if (res.ok) {
         const payload = await res.json();
         const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
@@ -636,13 +648,63 @@ export default function App() {
                 <Moon size={15} />
               </button>
             </div>
+
+            {isAdmin && (
+              <button
+                id="btn-nav-users"
+                onClick={() => setView(view === "users" ? "triage" : "users")}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition ${
+                  view === "users"
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                <Users size={13} />
+                <span>Kelola User</span>
+              </button>
+            )}
+
+            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+                <UserCircle2 size={15} />
+                <span className="hidden lg:inline">{user?.name}</span>
+                <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[9px] font-bold uppercase">
+                  {isAdmin ? "Admin" : "User"}
+                </span>
+              </div>
+              <button
+                id="btn-change-password"
+                onClick={() => setShowChangePassword(true)}
+                title="Ganti Password"
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <KeyRound size={14} />
+              </button>
+              <button
+                id="btn-logout"
+                onClick={() => logout()}
+                title="Keluar"
+                className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 cursor-pointer"
+              >
+                <LogOut size={14} />
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
+      {showChangePassword && (
+        <ChangePasswordModal blocking={false} onSuccess={() => setShowChangePassword(false)} onClose={() => setShowChangePassword(false)} />
+      )}
+
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-24">
-        
+        {view === "users" && isAdmin ? (
+          <div className="lg:col-span-12">
+            <UserManagementPage />
+          </div>
+        ) : (
+        <>
         {/* Banner triggers & ATS Decision Pipeline Flowchart */}
         <div className="lg:col-span-12 space-y-4">
           {successMsg && (
@@ -926,6 +988,7 @@ export default function App() {
             onSelectRecord={handleLoadExistingRecord}
             onDeleteRecord={handleDeleteTriageLog}
             onExportDataset={handleExportJsonDataset}
+            isAdmin={isAdmin}
           />
         </div>
 
@@ -1057,6 +1120,8 @@ export default function App() {
           </div>
           
         </div>
+        </>
+        )}
 
       </main>
 

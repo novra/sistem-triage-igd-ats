@@ -2,9 +2,11 @@ import { env } from "./config/env";
 import { initDatabase } from "./database/client";
 import { createApp } from "./app";
 import { logger } from "./logger";
+import { ensureAdminBootstrap } from "./modules/users/users.repository";
 
 async function bootstrap() {
   await initDatabase();
+  await ensureAdminBootstrap();
   const app = await createApp();
   app.listen(env.port, "0.0.0.0", () => {
     logger.info({ port: env.port, database: "postgresql" }, "ATS server started");

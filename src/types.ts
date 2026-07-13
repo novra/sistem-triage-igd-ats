@@ -1,3 +1,22 @@
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: "admin" | "user";
+  mustChangePassword: boolean;
+}
+
+export interface UserSummary {
+  id: string;
+  email: string;
+  name: string;
+  role: "admin" | "user";
+  is_active: boolean;
+  must_change_password: boolean;
+  created_at: string;
+  last_login_at: string | null;
+}
+
 export enum Gender {
   LAKI_LAKI = "Laki-laki",
   PEREMPUAN = "Perempuan",

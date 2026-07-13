@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { classifyTriage } from "../ats/ats.service";
 import { toTrainingDataset } from "../records/export.service";
+import { requireAdmin } from "../auth/auth.middleware";
 import { recordEvent } from "../monitoring/events.repository";
 import { deleteRecord, listRecords, saveRecord } from "./triage.repository";
 import { isHeuristicResultWeak, parseNarrativeHeuristic, parseNarrativeWithAI } from "./narrative.service";
@@ -13,7 +14,7 @@ triageRouter.post("/classify", async (req, res, next) => {
     if (!record || !record.vitalSign) {
       return res.status(400).json({ error: "Data triage tidak lengkap" });
     }
-    const result = await classifyTriage(record, aiProvider, aiModel);
+    const result = await classifyTriage(record, aiProvider, aiModel, req.user);
     return res.json(result);
   } catch (error) {
     return next(error);
@@ -27,6 +28,8 @@ triageRouter.post("/parse-narrative", async (req, res, next) => {
     if (!narrative || typeof narrative !== "string" || !narrative.trim()) {
       return res.status(400).json({ error: "Data narasi klinis kosong atau tidak valid" });
     }
+    const userId = req.user?.id;
+    const userEmail = req.user?.email;
 
     const heuristicRecord = parseNarrativeHeuristic(narrative);
     if (!isHeuristicResultWeak(narrative, heuristicRecord)) {
@@ -36,6 +39,8 @@ triageRouter.post("/parse-narrative", async (req, res, next) => {
         provider: "heuristic",
         durationMs: Date.now() - startedAt,
         detail: { source: "heuristic", aiProviderRequested: aiProvider || "rulebased" },
+        userId,
+        userEmail,
       });
       return res.json({ success: true, record: heuristicRecord, source: "heuristic" });
     }
@@ -50,6 +55,8 @@ triageRouter.post("/parse-narrative", async (req, res, next) => {
           model: aiModel,
           durationMs: Date.now() - startedAt,
           detail: { source: "ai" },
+          userId,
+          userEmail,
         });
         return res.json({ success: true, record: aiRecord, source: "ai" });
       }
@@ -63,6 +70,8 @@ triageRouter.post("/parse-narrative", async (req, res, next) => {
         durationMs: Date.now() - startedAt,
         message: error instanceof Error ? error.message : String(error),
         detail: { context: "parse-narrative" },
+        userId,
+        userEmail,
       });
     }
 
@@ -79,6 +88,8 @@ triageRouter.post("/parse-narrative", async (req, res, next) => {
       provider: "heuristic-fallback",
       durationMs: Date.now() - startedAt,
       detail: { source: "heuristic-fallback", aiProviderRequested: aiProvider || "rulebased" },
+      userId,
+      userEmail,
     });
     return res.json({ success: true, record: heuristicRecord, source: "heuristic", notice });
   } catch (error) {
@@ -101,7 +112,7 @@ triageRouter.post("/records", async (req, res, next) => {
     if (!record.nomorRM || !record.namaPasien) {
       return res.status(400).json({ error: "Nomor RM dan Nama Pasien wajib diisi" });
     }
-    const saved = await saveRecord(record);
+    const saved = await saveRecord(record, req.user);
     const atsLevel = saved.atsFinal?.atsLevelFinal || saved.atsFinal?.atsLevelOverride || saved.atsPrediction?.atsLevel || null;
     req.log?.info({ recordId: saved.id, atsLevel }, "Triage record saved");
     return res.json(saved);
@@ -110,7 +121,7 @@ triageRouter.post("/records", async (req, res, next) => {
   }
 });
 
-triageRouter.get("/export", async (_req, res, next) => {
+triageRouter.get("/export", requireAdmin, async (_req, res, next) => {
   try {
     const records = await listRecords();
     return res.json(toTrainingDataset(records));
@@ -119,9 +130,9 @@ triageRouter.get("/export", async (_req, res, next) => {
   }
 });
 
-triageRouter.delete("/records/:id", async (req, res, next) => {
+triageRouter.delete("/records/:id", requireAdmin, async (req, res, next) => {
   try {
-    const deleted = await deleteRecord(req.params.id);
+    const deleted = await deleteRecord(req.params.id, req.user);
     if (!deleted) {
       return res.status(404).json({ error: "Rekam triase tidak ditemukan" });
     }

@@ -1,4 +1,5 @@
 import express from "express";
+import cookieParser from "cookie-parser";
 import path from "path";
 import pinoHttp from "pino-http";
 import { randomUUID } from "crypto";
@@ -6,9 +7,12 @@ import { createServer as createViteServer } from "vite";
 import { isProduction } from "./config/env";
 import { errorHandler } from "./middleware/errorHandler";
 import { logger } from "./logger";
+import { blockIfMustChangePassword, requireAdmin, requireAuth } from "./modules/auth/auth.middleware";
+import { authRouter } from "./modules/auth/auth.routes";
 import { recordEvent } from "./modules/monitoring/events.repository";
 import { monitoringRouter } from "./modules/monitoring/monitoring.routes";
 import { triageRouter } from "./modules/triage/triage.routes";
+import { usersRouter } from "./modules/users/users.routes";
 
 const SLOW_REQUEST_THRESHOLD_MS = 1000;
 
@@ -48,19 +52,28 @@ export async function createApp() {
         durationMs,
         message: `${req.method} ${req.path}`,
         detail: { statusCode: res.statusCode, slow: isSlow },
+        // req.user baru terisi setelah requireAuth jalan di route handler — tapi berhubung
+        // listener "finish" ini baru terpicu setelah response selesai dikirim (yaitu setelah
+        // seluruh middleware/handler di request yang sama, termasuk requireAuth, selesai),
+        // req.user sudah pasti terisi di sini kalau request itu berhasil melewati auth.
+        userId: req.user?.id,
+        userEmail: req.user?.email,
       });
     });
     next();
   });
 
+  app.use(cookieParser());
   app.use(express.json({ limit: "2mb" }));
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", database: "postgresql", timestamp: new Date().toISOString() });
   });
 
-  app.use("/api/triage", triageRouter);
-  app.use("/api/monitoring", monitoringRouter);
+  app.use("/api/auth", authRouter);
+  app.use("/api/users", requireAuth, blockIfMustChangePassword, requireAdmin, usersRouter);
+  app.use("/api/triage", requireAuth, blockIfMustChangePassword, triageRouter);
+  app.use("/api/monitoring", requireAuth, blockIfMustChangePassword, requireAdmin, monitoringRouter);
 
   if (isProduction) {
     const distPath = path.join(process.cwd(), "dist");
