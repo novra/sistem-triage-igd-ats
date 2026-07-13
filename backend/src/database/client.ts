@@ -1,11 +1,16 @@
 import { Pool, PoolClient } from "pg";
 import { env } from "../config/env";
+import { logger } from "../logger";
 
 export const pool = new Pool({
   connectionString: env.databaseUrl,
   max: Number(process.env.PG_POOL_MAX || 10),
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
+});
+
+pool.on("error", (error) => {
+  logger.error({ err: error }, "Unexpected PostgreSQL pool error");
 });
 
 export async function query<T = any>(text: string, params: any[] = []) {
@@ -60,5 +65,22 @@ export async function initDatabase() {
 
     create index if not exists idx_audit_logs_record_id on audit_logs (record_id);
     create index if not exists idx_audit_logs_created_at on audit_logs (created_at desc);
+
+    create table if not exists system_events (
+      id text primary key,
+      event_type text not null,
+      level text not null default 'info',
+      provider text,
+      model text,
+      ats_level integer,
+      duration_ms integer,
+      message text,
+      detail_json jsonb,
+      created_at timestamptz not null default now()
+    );
+
+    create index if not exists idx_system_events_created_at on system_events (created_at desc);
+    create index if not exists idx_system_events_event_type on system_events (event_type);
+    create index if not exists idx_system_events_level on system_events (level);
   `);
 }

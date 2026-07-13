@@ -29,3 +29,20 @@ create table if not exists audit_logs (
 
 create index if not exists idx_audit_logs_record_id on audit_logs (record_id);
 create index if not exists idx_audit_logs_created_at on audit_logs (created_at desc);
+
+create table if not exists system_events (
+  id text primary key,
+  event_type text not null,
+  level text not null default 'info',
+  provider text,
+  model text,
+  ats_level integer,
+  duration_ms integer,
+  message text,
+  detail_json jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_system_events_created_at on system_events (created_at desc);
+create index if not exists idx_system_events_event_type on system_events (event_type);
+create index if not exists idx_system_events_level on system_events (level);

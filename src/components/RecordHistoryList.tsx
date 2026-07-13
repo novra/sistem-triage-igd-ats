@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { TriageRecord, ATS_LEVEL_DETAILS } from "../types";
 import {
+  Activity,
   ChevronUp,
   Download,
   Edit3,
@@ -27,6 +28,7 @@ export default function RecordHistoryList({
 }: RecordHistoryListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [isDownloadingLog, setIsDownloadingLog] = useState(false);
 
   const filtered = records.filter((r) => {
     const term = searchTerm.toLowerCase();
@@ -264,6 +266,27 @@ export default function RecordHistoryList({
     document.body.removeChild(link);
   };
 
+  const downloadMonitoringLog = async () => {
+    setIsDownloadingLog(true);
+    try {
+      const res = await fetch("/api/monitoring/export");
+      if (!res.ok) throw new Error(`Gagal mengunduh log monitoring (status ${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Log_Monitoring_ATS_${new Date().toISOString().split("T")[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Gagal mengunduh log monitoring.");
+    } finally {
+      setIsDownloadingLog(false);
+    }
+  };
+
   return (
     <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs space-y-4" id="records-history-section">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -291,6 +314,16 @@ export default function RecordHistoryList({
           >
             <FileJson size={14} />
             <span>Ekspor JSON (NLP Dataset)</span>
+          </button>
+
+          <button
+            id="btn-download-monitoring-log"
+            onClick={downloadMonitoringLog}
+            disabled={isDownloadingLog}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm"
+          >
+            <Activity size={14} />
+            <span>{isDownloadingLog ? "Menyiapkan..." : "Unduh Log Monitoring (Excel)"}</span>
           </button>
         </div>
       </div>

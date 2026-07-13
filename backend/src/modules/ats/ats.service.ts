@@ -1,5 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { env } from "../../config/env";
+import { logger } from "../../logger";
+import { recordEvent } from "../monitoring/events.repository";
 import { classifyByRules } from "./atsRuleEngine";
 
 const ai = new GoogleGenAI({
@@ -349,10 +351,10 @@ async function classifyWithRunPod(promptText: string, record: any, ruleResult: R
   }
   const parsed = extractTriagePrediction(data);
   if (!parsed) {
-    console.error("RunPod ATS parse failure", {
-      finishReason: data?.choices?.[0]?.finish_reason,
-      rawResponse: JSON.stringify(data).slice(0, 3000),
-    });
+    logger.error(
+      { finishReason: data?.choices?.[0]?.finish_reason, rawResponse: JSON.stringify(data).slice(0, 3000) },
+      "RunPod ATS parse failure",
+    );
     throw new Error("RunPod model returned data, but atsLevel was not structured properly.");
   }
 
@@ -364,11 +366,13 @@ async function classifyWithRunPod(promptText: string, record: any, ruleResult: R
 }
 
 export async function classifyTriage(record: any, aiProvider?: string, aiModel?: string) {
+  const startedAt = Date.now();
   const ruleResult = classifyByRules(record);
   const promptText = buildPrompt(record);
   let aiResult: any = null;
   let providerUsed = "Rule-Based";
   let modelUsed = "Clinical Safety Rules v2";
+  let aiFailed = false;
 
   try {
     if (aiProvider === "rulebased") {
@@ -390,7 +394,16 @@ export async function classifyTriage(record: any, aiProvider?: string, aiModel?:
       modelUsed = result.modelUsed;
     }
   } catch (error) {
-    console.error("AI classification failed, using rule fallback:", error);
+    aiFailed = true;
+    logger.error({ err: error, aiProvider, aiModel }, "AI classification failed, using rule fallback");
+    recordEvent({
+      eventType: "ai_failure",
+      level: "error",
+      provider: aiProvider || "unknown",
+      model: aiModel,
+      message: error instanceof Error ? error.message : String(error),
+      detail: { context: "classify" },
+    });
   }
 
   const parsedLevel = readAtsLevel(aiResult);
@@ -402,11 +415,38 @@ export async function classifyTriage(record: any, aiProvider?: string, aiModel?:
   let finalWarnings = toStringArray(aiResult.warningConditions || aiResult.kondisiPeringatan || aiResult.redFlags);
   let finalEmergency = Boolean(aiResult.emergencyIndicator || ruleResult.emergency);
 
-  if (ruleResult.overrideLevel && ruleResult.overrideLevel <= 3 && ruleResult.overrideLevel < finalAtsLevel) {
-    finalAtsLevel = ruleResult.overrideLevel;
+  const ruleOverrode = Boolean(
+    ruleResult.overrideLevel && ruleResult.overrideLevel <= 3 && ruleResult.overrideLevel < finalAtsLevel,
+  );
+  if (ruleOverrode) {
+    finalAtsLevel = ruleResult.overrideLevel!;
     finalWarnings = [...ruleResult.warnings, ...finalWarnings];
     finalEmergency = true;
   }
+
+  logger.info(
+    {
+      aiProviderRequested: aiProvider || "rulebased",
+      providerUsed,
+      modelUsed,
+      aiFailed,
+      ruleOverrode,
+      finalAtsLevel,
+      emergencyIndicator: finalEmergency,
+      durationMs: Date.now() - startedAt,
+    },
+    "ATS classification decided",
+  );
+
+  recordEvent({
+    eventType: "ats_classification",
+    level: "info",
+    provider: providerUsed,
+    model: modelUsed,
+    atsLevel: finalAtsLevel,
+    durationMs: Date.now() - startedAt,
+    detail: { aiProviderRequested: aiProvider || "rulebased", aiFailed, ruleOverrode, emergencyIndicator: finalEmergency },
+  });
 
   const clinicalInfo = [
     ...toStringArray(aiResult.informasiKlinisDigunakan || aiResult.clinicalInformationUsed || aiResult.dataKlinisDigunakan),
