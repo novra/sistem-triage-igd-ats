@@ -26,7 +26,27 @@ async function sendCredentialEmail(input: {
   }
 
   try {
-    await client.emails.send({ from: env.emailFrom, to: input.to, subject: input.subject, html: input.bodyHtml });
+    // resend.emails.send() TIDAK melempar exception untuk error level-API (mis. domain
+    // pengirim belum diverifikasi, atau di mode sandbox cuma boleh kirim ke email pemilik
+    // akun Resend) — errornya dikembalikan lewat field `error`, bukan throw. Kalau ini
+    // tidak dicek eksplisit, kegagalan kirim akan salah dilaporkan sebagai sukses.
+    const { data, error } = await client.emails.send({
+      from: env.emailFrom,
+      to: input.to,
+      subject: input.subject,
+      html: input.bodyHtml,
+    });
+    if (error) {
+      logger.error({ err: error, to: input.to, context: input.context }, "Resend menolak pengiriman email");
+      recordEvent({
+        eventType: "email_failure",
+        level: "warn",
+        message: error.message || String(error),
+        detail: { context: input.context, to: input.to, resendError: error },
+      });
+      return false;
+    }
+    logger.info({ to: input.to, context: input.context, id: data?.id }, "Email terkirim via Resend");
     return true;
   } catch (error) {
     logger.error({ err: error, to: input.to, context: input.context }, "Gagal mengirim email");

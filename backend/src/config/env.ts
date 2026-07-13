@@ -14,7 +14,7 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET || "",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "10h",
   resendApiKey: process.env.RESEND_API_KEY || "",
-  emailFrom: process.env.EMAIL_FROM || "no-reply@example.com",
+  emailFrom: process.env.EMAIL_FROM || "onboarding@resend.dev",
   appUrl: process.env.APP_URL || "http://localhost:3000",
   adminEmail: process.env.ADMIN_EMAIL || "",
   adminName: process.env.ADMIN_NAME || "Administrator",
