@@ -3,7 +3,13 @@ import { query, withTransaction } from "../../database/client";
 import { createId } from "../../shared/ids";
 import { recordEvent } from "../monitoring/events.repository";
 
-type ActingUser = { id: string; email: string };
+type ActingUser = { id: string; email: string; role?: string };
+
+export class RecordAccessDeniedError extends Error {
+  constructor() {
+    super("Anda hanya bisa mengubah rekam triase yang Anda buat sendiri.");
+  }
+}
 
 function normalizeRecord(row: any) {
   const payload = row.payload_json || {};
@@ -13,66 +19,59 @@ function normalizeRecord(row: any) {
     id: row.id,
     timestamp: row.updated_at || payload.timestamp,
     auditLogs,
+    createdByUserId: row.created_by_user_id || null,
+    createdByUserName: row.creator_name || null,
+    createdByUserEmail: row.creator_email || null,
   };
 }
 
+const RECORD_SELECT = `
+  select tr.*,
+    u.name as creator_name, u.email as creator_email,
+    coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'action', al.action,
+          'timestamp', al.created_at,
+          'user', al.user_name
+        )
+        order by al.created_at
+      ) filter (where al.id is not null),
+      '[]'::jsonb
+    ) as audit_logs
+  from triage_records tr
+  left join audit_logs al on al.record_id = tr.id
+  left join users u on u.id = tr.created_by_user_id
+`;
+
 async function getRecordByIdWithClient(client: PoolClient, id: string) {
   const result = await client.query(
-    `
-      select tr.*,
-        coalesce(
-          jsonb_agg(
-            jsonb_build_object(
-              'action', al.action,
-              'timestamp', al.created_at,
-              'user', al.user_name
-            )
-            order by al.created_at
-          ) filter (where al.id is not null),
-          '[]'::jsonb
-        ) as audit_logs
-      from triage_records tr
-      left join audit_logs al on al.record_id = tr.id
-      where tr.id = $1
-      group by tr.id
-    `,
+    `${RECORD_SELECT} where tr.id = $1 group by tr.id, u.name, u.email`,
     [id]
   );
   return result.rows[0] ? normalizeRecord(result.rows[0]) : null;
 }
 
-export async function listRecords(search?: string) {
+export async function listRecords(search?: string, actingUser?: ActingUser) {
   const params: any[] = [];
-  let where = "";
+  const conditions: string[] = [];
   if (search) {
     params.push(`%${search.toLowerCase()}%`);
-    where = `
-      where lower(patient_name) like $1
-         or lower(patient_rm) like $1
-         or lower(coalesce(chief_complaint, '')) like $1
-    `;
+    conditions.push(`(
+      lower(tr.patient_name) like $${params.length}
+      or lower(tr.patient_rm) like $${params.length}
+      or lower(coalesce(tr.chief_complaint, '')) like $${params.length}
+    )`);
   }
+  // User biasa hanya boleh melihat rekam yang dia buat sendiri; admin melihat semua.
+  if (actingUser && actingUser.role !== "admin") {
+    params.push(actingUser.id);
+    conditions.push(`tr.created_by_user_id = $${params.length}`);
+  }
+  const where = conditions.length ? `where ${conditions.join(" and ")}` : "";
 
   const result = await query(
-    `
-      select tr.*,
-        coalesce(
-          jsonb_agg(
-            jsonb_build_object(
-              'action', al.action,
-              'timestamp', al.created_at,
-              'user', al.user_name
-            )
-            order by al.created_at
-          ) filter (where al.id is not null),
-          '[]'::jsonb
-        ) as audit_logs
-      from triage_records tr
-      left join audit_logs al on al.record_id = tr.id
-      ${where}
-      group by tr.id
-      order by tr.updated_at desc
-    `,
+    `${RECORD_SELECT} ${where} group by tr.id, u.name, u.email order by tr.updated_at desc`,
     params
   );
 
@@ -80,27 +79,7 @@ export async function listRecords(search?: string) {
 }
 
 export async function getRecordById(id: string) {
-  const result = await query(
-    `
-      select tr.*,
-        coalesce(
-          jsonb_agg(
-            jsonb_build_object(
-              'action', al.action,
-              'timestamp', al.created_at,
-              'user', al.user_name
-            )
-            order by al.created_at
-          ) filter (where al.id is not null),
-          '[]'::jsonb
-        ) as audit_logs
-      from triage_records tr
-      left join audit_logs al on al.record_id = tr.id
-      where tr.id = $1
-      group by tr.id
-    `,
-    [id]
-  );
+  const result = await query(`${RECORD_SELECT} where tr.id = $1 group by tr.id, u.name, u.email`, [id]);
   return result.rows[0] ? normalizeRecord(result.rows[0]) : null;
 }
 
@@ -141,8 +120,19 @@ export async function saveRecord(input: any, actingUser?: ActingUser) {
   return withTransaction(async (client) => {
     const id = input.id || createId("TRG");
     const existing = input.id
-      ? await client.query("select id from triage_records where id = $1", [input.id])
-      : { rowCount: 0 };
+      ? await client.query("select id, created_by_user_id from triage_records where id = $1", [input.id])
+      : { rowCount: 0, rows: [] as any[] };
+
+    // User biasa cuma boleh menimpa (edit) rekam yang dia buat sendiri. Baris tanpa
+    // created_by_user_id (rekam lama/legacy) dianggap bukan miliknya juga — lebih aman
+    // daripada mengizinkan edit ke rekam yang kepemilikannya tidak jelas.
+    if (existing.rowCount && actingUser && actingUser.role !== "admin") {
+      const ownerId = existing.rows[0].created_by_user_id;
+      if (ownerId !== actingUser.id) {
+        throw new RecordAccessDeniedError();
+      }
+    }
+
     const action = existing.rowCount ? "Update Data Triase" : "Pendaftaran & Triase Baru";
     const record = {
       ...input,
@@ -156,9 +146,9 @@ export async function saveRecord(input: any, actingUser?: ActingUser) {
         insert into triage_records (
           id, patient_rm, patient_name, patient_age, chief_complaint,
           ats_predicted, ats_final, emergency_indicator, payload_json, created_by,
-          created_at, updated_at
+          created_by_user_id, created_at, updated_at
         )
-        values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, now(), now())
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, now(), now())
         on conflict (id) do update set
           patient_rm = excluded.patient_rm,
           patient_name = excluded.patient_name,
@@ -170,7 +160,9 @@ export async function saveRecord(input: any, actingUser?: ActingUser) {
           payload_json = excluded.payload_json,
           updated_at = now()
       `,
-      [id, ...values]
+      // created_by_user_id sengaja TIDAK ada di klausa "do update set" di atas, supaya
+      // pemilik asli tetap tercatat walau record-nya diedit ulang (termasuk oleh admin).
+      [id, ...values, actingUser?.id || null]
     );
 
     await insertAudit(client, id, action, record.atsFinal?.namaPetugas, { atsFinal: record.atsFinal || null }, actingUser);

@@ -3,16 +3,29 @@ import { classifyTriage } from "../ats/ats.service";
 import { toTrainingDataset } from "../records/export.service";
 import { requireAdmin } from "../auth/auth.middleware";
 import { recordEvent } from "../monitoring/events.repository";
-import { deleteRecord, listRecords, saveRecord } from "./triage.repository";
+import { RecordAccessDeniedError, deleteRecord, listRecords, saveRecord } from "./triage.repository";
 import { isHeuristicResultWeak, parseNarrativeHeuristic, parseNarrativeWithAI } from "./narrative.service";
 
 export const triageRouter = Router();
+
+// User biasa cuma boleh pakai Pure Rule Based / Model Mandiri — provider AI pihak
+// ketiga lain (Hugging Face, Gemini) dibatasi untuk admin saja.
+const ADMIN_ONLY_AI_PROVIDERS = new Set(["huggingface", "gemini"]);
+
+function isProviderAllowed(role: string | undefined, aiProvider?: string): boolean {
+  if (!aiProvider) return true;
+  if (!ADMIN_ONLY_AI_PROVIDERS.has(aiProvider)) return true;
+  return role === "admin";
+}
 
 triageRouter.post("/classify", async (req, res, next) => {
   try {
     const { aiProvider, aiModel, ...record } = req.body;
     if (!record || !record.vitalSign) {
       return res.status(400).json({ error: "Data triage tidak lengkap" });
+    }
+    if (!isProviderAllowed(req.user?.role, aiProvider)) {
+      return res.status(403).json({ error: "Provider AI ini hanya bisa dipakai admin." });
     }
     const result = await classifyTriage(record, aiProvider, aiModel, req.user);
     return res.json(result);
@@ -27,6 +40,9 @@ triageRouter.post("/parse-narrative", async (req, res, next) => {
     const { narrative, aiProvider, aiModel } = req.body;
     if (!narrative || typeof narrative !== "string" || !narrative.trim()) {
       return res.status(400).json({ error: "Data narasi klinis kosong atau tidak valid" });
+    }
+    if (!isProviderAllowed(req.user?.role, aiProvider)) {
+      return res.status(403).json({ error: "Provider AI ini hanya bisa dipakai admin." });
     }
     const userId = req.user?.id;
     const userEmail = req.user?.email;
@@ -99,7 +115,7 @@ triageRouter.post("/parse-narrative", async (req, res, next) => {
 
 triageRouter.get("/records", async (req, res, next) => {
   try {
-    const records = await listRecords(req.query.search ? String(req.query.search) : undefined);
+    const records = await listRecords(req.query.search ? String(req.query.search) : undefined, req.user);
     return res.json(records);
   } catch (error) {
     return next(error);
@@ -117,6 +133,9 @@ triageRouter.post("/records", async (req, res, next) => {
     req.log?.info({ recordId: saved.id, atsLevel }, "Triage record saved");
     return res.json(saved);
   } catch (error) {
+    if (error instanceof RecordAccessDeniedError) {
+      return res.status(403).json({ error: error.message });
+    }
     return next(error);
   }
 });

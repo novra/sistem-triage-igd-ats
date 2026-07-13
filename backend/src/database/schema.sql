@@ -69,3 +69,6 @@ create index if not exists idx_system_events_user_id on system_events (user_id);
 
 alter table audit_logs add column if not exists user_id text references users(id) on delete set null;
 alter table audit_logs add column if not exists user_email text;
+
+alter table triage_records add column if not exists created_by_user_id text references users(id) on delete set null;
+create index if not exists idx_triage_records_created_by_user_id on triage_records (created_by_user_id);

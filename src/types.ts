@@ -171,6 +171,10 @@ export interface TriageRecord {
     timestamp: string;
     user: string;
   }[];
+
+  createdByUserId?: string | null;
+  createdByUserName?: string | null;
+  createdByUserEmail?: string | null;
 }
 
 export const ATS_LEVEL_DETAILS = {

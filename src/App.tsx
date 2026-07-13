@@ -353,6 +353,16 @@ export default function App() {
     localStorage.setItem("ats_ai_model", model);
   };
 
+  // User biasa cuma boleh pakai Pure Rule Based / Model Mandiri. Provider lain (mis.
+  // Hugging Face) mungkin tersimpan di localStorage dari sebelum pembatasan ini ada
+  // atau dari sesi admin sebelumnya di perangkat yang sama — reset ke rulebased.
+  useEffect(() => {
+    if (!isAdmin && (aiProvider === "huggingface" || aiProvider === "gemini")) {
+      handleSetAiProvider("rulebased");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, aiProvider]);
+
   // Load cache on start
   useEffect(() => {
     const cachedForm = localStorage.getItem("ats_cached_form");
@@ -761,19 +771,21 @@ export default function App() {
                   <CheckCircle2 size={13} />
                   <span>Pure Rule Based</span>
                 </button>
-                <button
-                  id="provider-huggingface"
-                  type="button"
-                  onClick={() => handleSetAiProvider("huggingface")}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                    aiProvider === "huggingface"
-                      ? "bg-indigo-600 text-white shadow-xs"
-                      : "text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                  }`}
-                >
-                  <Activity size={13} />
-                  <span>Hugging Face</span>
-                </button>
+                {isAdmin && (
+                  <button
+                    id="provider-huggingface"
+                    type="button"
+                    onClick={() => handleSetAiProvider("huggingface")}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      aiProvider === "huggingface"
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : "text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+                    }`}
+                  >
+                    <Activity size={13} />
+                    <span>Hugging Face</span>
+                  </button>
+                )}
                 <button
                   id="provider-runpod"
                   type="button"
@@ -989,6 +1001,7 @@ export default function App() {
             onDeleteRecord={handleDeleteTriageLog}
             onExportDataset={handleExportJsonDataset}
             isAdmin={isAdmin}
+            currentUserId={user?.id}
           />
         </div>
 

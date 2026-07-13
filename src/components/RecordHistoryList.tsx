@@ -20,6 +20,7 @@ interface RecordHistoryListProps {
   onDeleteRecord: (id: string) => void;
   onExportDataset: () => void;
   isAdmin: boolean;
+  currentUserId?: string;
 }
 
 export default function RecordHistoryList({
@@ -28,6 +29,7 @@ export default function RecordHistoryList({
   onDeleteRecord,
   onExportDataset,
   isAdmin,
+  currentUserId,
 }: RecordHistoryListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -301,14 +303,16 @@ export default function RecordHistoryList({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            id="btn-export-csv"
-            onClick={exportCsv}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm"
-          >
-            <Download size={14} />
-            <span>Ekspor ke CSV/Excel</span>
-          </button>
+          {isAdmin && (
+            <button
+              id="btn-export-csv"
+              onClick={exportCsv}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm"
+            >
+              <Download size={14} />
+              <span>Ekspor ke CSV/Excel</span>
+            </button>
+          )}
 
           {isAdmin && (
             <button
@@ -358,13 +362,14 @@ export default function RecordHistoryList({
               <th className="px-4 py-3 text-center">ATS Final</th>
               <th className="px-4 py-3">Override</th>
               <th className="px-4 py-3">Validator</th>
+              {isAdmin && <th className="px-4 py-3">Dibuat Oleh</th>}
               <th className="px-4 py-3 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-slate-400">
+                <td colSpan={isAdmin ? 9 : 8} className="text-center py-8 text-slate-400">
                   Tidak ada rekam triage yang cocok. Silakan daftarkan pasien baru.
                 </td>
               </tr>
@@ -437,6 +442,13 @@ export default function RecordHistoryList({
                           {record.atsFinal?.jabatanPetugas || "-"}
                         </span>
                       </td>
+                      {isAdmin && (
+                        <td className="px-4 py-3">
+                          <span className="block max-w-[160px] truncate font-semibold text-slate-700">
+                            {record.createdByUserName || record.createdByUserEmail || "-"}
+                          </span>
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
@@ -456,14 +468,16 @@ export default function RecordHistoryList({
                           >
                             <FileText size={15} />
                           </button>
-                          <button
-                            id={`btn-edit-rec-${record.id}`}
-                            onClick={() => onSelectRecord(record)}
-                            className="p-1 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                            title="Edit / Muat ke Form"
-                          >
-                            <Edit3 size={15} />
-                          </button>
+                          {(isAdmin || record.createdByUserId === currentUserId) && (
+                            <button
+                              id={`btn-edit-rec-${record.id}`}
+                              onClick={() => onSelectRecord(record)}
+                              className="p-1 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                              title="Edit / Muat ke Form"
+                            >
+                              <Edit3 size={15} />
+                            </button>
+                          )}
                           {isAdmin && (
                             <button
                               id={`btn-delete-rec-${record.id}`}
@@ -484,7 +498,7 @@ export default function RecordHistoryList({
 
                     {isExpanded && (
                       <tr className="bg-slate-50/70">
-                        <td colSpan={8} className="px-4 py-4">
+                        <td colSpan={isAdmin ? 9 : 8} className="px-4 py-4">
                           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 rounded-xl border border-slate-200 bg-white p-4">
                             <DetailSection title="Identitas dan Kunjungan">
                               <dl className="grid grid-cols-2 md:grid-cols-3 gap-3">
