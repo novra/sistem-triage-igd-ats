@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { findUserById } from "../auth/auth.repository";
+import { generateTempPassword } from "../auth/auth.service";
 import { sendPasswordResetEmail, sendWelcomeEmail } from "../notifications/email.service";
 import {
   DuplicateEmailError,
@@ -23,18 +24,18 @@ usersRouter.get("/", async (_req, res, next) => {
 
 usersRouter.post("/", async (req, res, next) => {
   try {
-    const { email, name, password, role } = req.body || {};
-    if (!email || !name || !password) {
-      return res.status(400).json({ error: "Email, nama, dan password awal wajib diisi." });
-    }
-    if (String(password).length < 8) {
-      return res.status(400).json({ error: "Password awal minimal 8 karakter." });
+    const { email, name, role } = req.body || {};
+    if (!email || !name) {
+      return res.status(400).json({ error: "Email dan nama wajib diisi." });
     }
     const userRole = role === "admin" ? "admin" : "user";
+    const tempPassword = generateTempPassword();
 
-    const user = await createUser({ email, name, password, role: userRole }, req.user?.id);
-    const emailSent = await sendWelcomeEmail({ to: user.email, name: user.name, tempPassword: password });
-    return res.status(201).json({ user, emailSent });
+    const user = await createUser({ email, name, password: tempPassword, role: userRole }, req.user?.id);
+    const emailSent = await sendWelcomeEmail({ to: user.email, name: user.name, tempPassword });
+    // Password cuma dikirim balik ke admin kalau emailnya gagal terkirim — supaya tetap
+    // ada cara menyampaikan ke user, tapi tidak diekspos tanpa perlu kalau email sukses.
+    return res.status(201).json({ user, emailSent, generatedPassword: emailSent ? undefined : tempPassword });
   } catch (error) {
     if (error instanceof DuplicateEmailError) {
       return res.status(409).json({ error: error.message });
@@ -81,18 +82,15 @@ usersRouter.delete("/:id", async (req, res, next) => {
 
 usersRouter.post("/:id/reset-password", async (req, res, next) => {
   try {
-    const { newPassword } = req.body || {};
-    if (!newPassword || String(newPassword).length < 8) {
-      return res.status(400).json({ error: "Password baru minimal 8 karakter." });
-    }
     const target = await findUserById(req.params.id);
     if (!target) return res.status(404).json({ error: "User tidak ditemukan." });
 
-    const ok = await resetPassword(req.params.id, newPassword);
+    const tempPassword = generateTempPassword();
+    const ok = await resetPassword(req.params.id, tempPassword);
     if (!ok) return res.status(404).json({ error: "User tidak ditemukan." });
 
-    const emailSent = await sendPasswordResetEmail({ to: target.email, name: target.name, tempPassword: newPassword });
-    return res.json({ success: true, emailSent });
+    const emailSent = await sendPasswordResetEmail({ to: target.email, name: target.name, tempPassword });
+    return res.json({ success: true, emailSent, generatedPassword: emailSent ? undefined : tempPassword });
   } catch (error) {
     return next(error);
   }

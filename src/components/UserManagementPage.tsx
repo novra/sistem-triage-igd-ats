@@ -11,10 +11,10 @@ export default function UserManagementPage() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "user">("user");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addNotice, setAddNotice] = useState("");
+  const [revealedPassword, setRevealedPassword] = useState("");
 
   const loadUsers = async () => {
     setIsLoading(true);
@@ -37,25 +37,28 @@ export default function UserManagementPage() {
     e.preventDefault();
     setError("");
     setAddNotice("");
+    setRevealedPassword("");
     setIsSubmitting(true);
     try {
       const res = await apiFetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, role }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Gagal menambah user.");
       setName("");
       setEmail("");
-      setPassword("");
       setRole("user");
       setShowAddForm(false);
-      setAddNotice(
-        data.emailSent
-          ? "User berhasil dibuat dan email notifikasi terkirim."
-          : "User berhasil dibuat. Email notifikasi tidak terkirim (RESEND_API_KEY belum diset atau gagal) — beri tahu password awal secara manual.",
-      );
+      if (data.emailSent) {
+        setAddNotice("User berhasil dibuat. Password awal (dibuat otomatis oleh sistem) sudah dikirim ke email user.");
+      } else {
+        setAddNotice(
+          "User berhasil dibuat, tapi email notifikasi TIDAK terkirim (RESEND_API_KEY belum diset atau gagal). Sampaikan password awal berikut ke user secara manual:",
+        );
+        setRevealedPassword(data.generatedPassword || "");
+      }
       await loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menambah user.");
@@ -100,21 +103,16 @@ export default function UserManagementPage() {
     }
   };
 
-  const handleResetPassword = async (id: string) => {
-    const newPassword = prompt("Masukkan password baru untuk user ini (minimal 8 karakter):");
-    if (!newPassword) return;
+  const handleResetPassword = async (id: string, name: string) => {
+    if (!confirm(`Reset password "${name}"? Sistem akan membuat password baru otomatis dan mengirimkannya ke email user.`)) return;
     try {
-      const res = await apiFetch(`/api/users/${id}/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newPassword }),
-      });
+      const res = await apiFetch(`/api/users/${id}/reset-password`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Gagal reset password.");
       alert(
         data.emailSent
           ? "Password berhasil direset dan email notifikasi terkirim ke user. User wajib ganti password saat login berikutnya."
-          : "Password berhasil direset. Email notifikasi tidak terkirim (RESEND_API_KEY belum diset atau gagal) — beri tahu password baru secara manual. User wajib ganti password saat login berikutnya.",
+          : `Password berhasil direset, tapi email TIDAK terkirim (RESEND_API_KEY belum diset atau gagal). Sampaikan password baru ini ke user secara manual:\n\n${data.generatedPassword}\n\nUser wajib ganti password saat login berikutnya.`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal reset password.");
@@ -142,8 +140,19 @@ export default function UserManagementPage() {
       </div>
 
       {addNotice && (
-        <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400 text-[11px] rounded-lg">
-          {addNotice}
+        <div
+          className={`px-3 py-2 border text-[11px] rounded-lg space-y-1.5 ${
+            revealedPassword
+              ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-400"
+              : "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400"
+          }`}
+        >
+          <p>{addNotice}</p>
+          {revealedPassword && (
+            <code className="block px-2 py-1.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 rounded-md text-sm font-mono font-bold tracking-wider select-all">
+              {revealedPassword}
+            </code>
+          )}
         </div>
       )}
       {error && (
@@ -154,7 +163,7 @@ export default function UserManagementPage() {
       )}
 
       {showAddForm && (
-        <form onSubmit={handleAddUser} className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
+        <form onSubmit={handleAddUser} className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
           <div className="space-y-1">
             <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama</label>
             <input
@@ -175,18 +184,6 @@ export default function UserManagementPage() {
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Password Awal</label>
-            <input
-              type="text"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Minimal 8 karakter"
-              className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:border-indigo-500"
-            />
-          </div>
-          <div className="space-y-1">
             <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Role</label>
             <select
               value={role}
@@ -197,7 +194,10 @@ export default function UserManagementPage() {
               <option value="admin">Admin</option>
             </select>
           </div>
-          <div className="sm:col-span-2">
+          <p className="sm:col-span-3 text-[10px] text-slate-400">
+            Password awal dibuat otomatis oleh sistem dan dikirim ke email di atas — tidak perlu diisi manual.
+          </p>
+          <div className="sm:col-span-3">
             <button
               id="btn-submit-add-user"
               type="submit"
@@ -268,7 +268,7 @@ export default function UserManagementPage() {
                   <td className="py-2 pr-3">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handleResetPassword(u.id)}
+                        onClick={() => handleResetPassword(u.id, u.name)}
                         title="Reset Password"
                         className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer"
                       >

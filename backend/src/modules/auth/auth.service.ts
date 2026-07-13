@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { randomInt } from "crypto";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 import { findUserByEmail } from "./auth.repository";
@@ -8,6 +9,19 @@ const BCRYPT_ROUNDS = 10;
 
 export function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, BCRYPT_ROUNDS);
+}
+
+// Hindari karakter ambigu (0/O, 1/l/I) supaya gampang dibaca/diketik ulang manual
+// kalau email gagal terkirim dan admin harus menyampaikannya lisan/chat.
+const TEMP_PASSWORD_CHARSET = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+const TEMP_PASSWORD_LENGTH = 14;
+
+export function generateTempPassword(): string {
+  let password = "";
+  for (let i = 0; i < TEMP_PASSWORD_LENGTH; i += 1) {
+    password += TEMP_PASSWORD_CHARSET[randomInt(TEMP_PASSWORD_CHARSET.length)];
+  }
+  return password;
 }
 
 export async function verifyCredentials(email: string, password: string): Promise<AuthUser | null> {
