@@ -401,6 +401,7 @@ export async function classifyTriage(record: any, aiProvider?: string, aiModel?:
       level: "error",
       provider: aiProvider || "unknown",
       model: aiModel,
+      durationMs: Date.now() - startedAt,
       message: error instanceof Error ? error.message : String(error),
       detail: { context: "classify" },
     });

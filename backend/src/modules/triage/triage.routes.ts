@@ -21,6 +21,7 @@ triageRouter.post("/classify", async (req, res, next) => {
 });
 
 triageRouter.post("/parse-narrative", async (req, res, next) => {
+  const startedAt = Date.now();
   try {
     const { narrative, aiProvider, aiModel } = req.body;
     if (!narrative || typeof narrative !== "string" || !narrative.trim()) {
@@ -30,6 +31,12 @@ triageRouter.post("/parse-narrative", async (req, res, next) => {
     const heuristicRecord = parseNarrativeHeuristic(narrative);
     if (!isHeuristicResultWeak(narrative, heuristicRecord)) {
       req.log?.info({ source: "heuristic", aiProvider: aiProvider || "rulebased" }, "Narrative parsed");
+      recordEvent({
+        eventType: "narrative_parse",
+        provider: "heuristic",
+        durationMs: Date.now() - startedAt,
+        detail: { source: "heuristic", aiProviderRequested: aiProvider || "rulebased" },
+      });
       return res.json({ success: true, record: heuristicRecord, source: "heuristic" });
     }
 
@@ -37,6 +44,13 @@ triageRouter.post("/parse-narrative", async (req, res, next) => {
       const aiRecord = await parseNarrativeWithAI(narrative, aiProvider, aiModel);
       if (aiRecord) {
         req.log?.info({ source: "ai", aiProvider, aiModel }, "Narrative parsed");
+        recordEvent({
+          eventType: "narrative_parse",
+          provider: aiProvider,
+          model: aiModel,
+          durationMs: Date.now() - startedAt,
+          detail: { source: "ai" },
+        });
         return res.json({ success: true, record: aiRecord, source: "ai" });
       }
     } catch (error) {
@@ -46,6 +60,7 @@ triageRouter.post("/parse-narrative", async (req, res, next) => {
         level: "error",
         provider: aiProvider || "unknown",
         model: aiModel,
+        durationMs: Date.now() - startedAt,
         message: error instanceof Error ? error.message : String(error),
         detail: { context: "parse-narrative" },
       });
@@ -59,6 +74,12 @@ triageRouter.post("/parse-narrative", async (req, res, next) => {
       : "AI tidak tersedia/gagal merespons sehingga memakai hasil ekstraksi cepat (heuristik), yang mungkin belum lengkap. Mohon tinjau & lengkapi manual di formulir.";
 
     req.log?.info({ source: "heuristic-fallback", aiProvider: aiProvider || "rulebased" }, "Narrative parsed");
+    recordEvent({
+      eventType: "narrative_parse",
+      provider: "heuristic-fallback",
+      durationMs: Date.now() - startedAt,
+      detail: { source: "heuristic-fallback", aiProviderRequested: aiProvider || "rulebased" },
+    });
     return res.json({ success: true, record: heuristicRecord, source: "heuristic", notice });
   } catch (error) {
     return next(error);
