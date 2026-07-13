@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AlertCircle, KeyRound, Plus, ShieldOff, UserPlus, Users } from "lucide-react";
+import { AlertCircle, KeyRound, Plus, ShieldCheck, ShieldOff, Trash2, UserPlus, Users } from "lucide-react";
 import { apiFetch } from "../lib/api";
 import type { UserSummary } from "../types";
 
@@ -73,6 +73,30 @@ export default function UserManagementPage() {
       await loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menonaktifkan user.");
+    }
+  };
+
+  const handleReactivate = async (id: string) => {
+    if (!confirm("Aktifkan kembali user ini? User akan bisa login lagi.")) return;
+    try {
+      const res = await apiFetch(`/api/users/${id}/reactivate`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Gagal mengaktifkan user.");
+      await loadUsers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal mengaktifkan user.");
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Hapus PERMANEN akun "${name}"? Tindakan ini tidak bisa dibatalkan. Riwayat aktivitasnya tetap tersimpan di log, tapi akunnya hilang total dan tidak bisa dipulihkan. Untuk user yang pernah aktif dipakai, sebaiknya nonaktifkan saja, bukan hapus.`)) return;
+    try {
+      const res = await apiFetch(`/api/users/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Gagal menghapus user.");
+      await loadUsers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal menghapus user.");
     }
   };
 
@@ -250,7 +274,7 @@ export default function UserManagementPage() {
                       >
                         <KeyRound size={13} />
                       </button>
-                      {u.is_active && (
+                      {u.is_active ? (
                         <button
                           onClick={() => handleDeactivate(u.id)}
                           title="Nonaktifkan"
@@ -258,7 +282,22 @@ export default function UserManagementPage() {
                         >
                           <ShieldOff size={13} />
                         </button>
+                      ) : (
+                        <button
+                          onClick={() => handleReactivate(u.id)}
+                          title="Aktifkan Kembali"
+                          className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 cursor-pointer"
+                        >
+                          <ShieldCheck size={13} />
+                        </button>
                       )}
+                      <button
+                        onClick={() => handleDelete(u.id, u.name)}
+                        title="Hapus Permanen"
+                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 cursor-pointer"
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </td>
                 </tr>

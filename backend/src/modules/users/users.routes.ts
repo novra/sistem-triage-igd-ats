@@ -1,7 +1,15 @@
 import { Router } from "express";
 import { findUserById } from "../auth/auth.repository";
 import { sendPasswordResetEmail, sendWelcomeEmail } from "../notifications/email.service";
-import { DuplicateEmailError, createUser, deactivateUser, listUsers, resetPassword } from "./users.repository";
+import {
+  DuplicateEmailError,
+  createUser,
+  deactivateUser,
+  deleteUser,
+  listUsers,
+  reactivateUser,
+  resetPassword,
+} from "./users.repository";
 
 export const usersRouter = Router();
 
@@ -41,6 +49,29 @@ usersRouter.post("/:id/deactivate", async (req, res, next) => {
       return res.status(400).json({ error: "Tidak bisa menonaktifkan akun sendiri." });
     }
     const ok = await deactivateUser(req.params.id);
+    if (!ok) return res.status(404).json({ error: "User tidak ditemukan." });
+    return res.json({ success: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+usersRouter.post("/:id/reactivate", async (req, res, next) => {
+  try {
+    const ok = await reactivateUser(req.params.id);
+    if (!ok) return res.status(404).json({ error: "User tidak ditemukan." });
+    return res.json({ success: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+usersRouter.delete("/:id", async (req, res, next) => {
+  try {
+    if (req.params.id === req.user?.id) {
+      return res.status(400).json({ error: "Tidak bisa menghapus akun sendiri." });
+    }
+    const ok = await deleteUser(req.params.id);
     if (!ok) return res.status(404).json({ error: "User tidak ditemukan." });
     return res.json({ success: true });
   } catch (error) {

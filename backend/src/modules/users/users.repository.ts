@@ -53,6 +53,19 @@ export async function deactivateUser(id: string): Promise<boolean> {
   return Boolean(result.rowCount);
 }
 
+export async function reactivateUser(id: string): Promise<boolean> {
+  const result = await query("update users set is_active = true, updated_at = now() where id = $1", [id]);
+  return Boolean(result.rowCount);
+}
+
+// Hapus permanen — audit_logs/system_events yang sudah tercatat TIDAK ikut terhapus
+// (kolom user_id di sana pakai "on delete set null"), hanya baris akun ini yang hilang.
+// Pakai deactivateUser untuk user yang pernah aktif dipakai; ini untuk akun salah input.
+export async function deleteUser(id: string): Promise<boolean> {
+  const result = await query("delete from users where id = $1", [id]);
+  return Boolean(result.rowCount);
+}
+
 export async function resetPassword(id: string, newPassword: string): Promise<boolean> {
   const passwordHash = await hashPassword(newPassword);
   const result = await query(
