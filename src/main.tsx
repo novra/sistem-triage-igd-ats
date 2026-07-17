@@ -17,6 +17,8 @@ if (localStorage.getItem('ats_dark_theme') === 'true') {
 // perubahan ukuran mendadak pada layar masuk maupun saat sesi dimuat.
 if (localStorage.getItem('ats_display_mode') === 'accessible') {
   document.documentElement.classList.add('accessibility-mode');
+} else {
+  document.documentElement.classList.add('standard-mode');
 }
 
 function AuthGate() {

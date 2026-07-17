@@ -380,6 +380,7 @@ export default function App() {
   useEffect(() => {
     const html = document.documentElement;
     html.classList.toggle("accessibility-mode", displayMode === "accessible");
+    html.classList.toggle("standard-mode", displayMode === "standard");
     localStorage.setItem("ats_display_mode", displayMode);
   }, [displayMode]);
 
@@ -588,13 +589,13 @@ export default function App() {
       {/* Upper header */}
       <header className={`sticky top-0 z-40 border-b transition-all ${darkMode ? "bg-slate-950/90 border-slate-800" : "bg-white/88 border-white/70 shadow-sm"} backdrop-blur-xl`}>
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-linear-to-br from-rose-500 to-red-700 text-white rounded-2xl shadow-lg shadow-rose-200/50 dark:shadow-none flex items-center justify-center">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3.5">
+            <div className="app-brand-logo p-3 bg-linear-to-br from-rose-500 via-rose-600 to-red-700 text-white rounded-2xl shadow-lg shadow-rose-200/50 dark:shadow-none flex items-center justify-center">
               <Activity size={25} />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-extrabold tracking-tight text-slate-950 dark:text-white">E-Triase IGD ATS</h1>
+                <h1 className="app-brand-title truncate text-lg font-extrabold tracking-tight text-slate-950 dark:text-white">E-Triase IGD ATS</h1>
                 <span className="hidden text-xs font-bold px-2.5 py-1 bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 rounded-full select-none border border-rose-100 dark:border-rose-900 sm:inline-flex">
                   BETA
                 </span>
@@ -952,10 +953,10 @@ export default function App() {
           </div>
 
           {/* Clinician Form Progress Header Stepper */}
-          <div className={`grid gap-3 ${
+          <div className={`${
             displayMode === "accessible"
-              ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
-              : "grid-cols-2 md:grid-cols-3 xl:grid-cols-6"
+              ? "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+              : "standard-stepper flex snap-x gap-2 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:gap-3 md:overflow-visible md:pb-0 xl:grid-cols-6"
           }`}>
             {STEPS.map((step, idx) => {
               const active = idx === activeStep;
@@ -965,7 +966,7 @@ export default function App() {
                   id={`btn-step-nav-${idx}`}
                   key={idx}
                   onClick={() => setActiveStep(idx)}
-                  className={`min-h-24 p-3.5 rounded-2xl border text-left transition-all cursor-pointer select-none h-full ${
+                  className={`${displayMode === "accessible" ? "min-h-24 p-3.5" : "min-h-20 min-w-36 snap-start p-3 md:min-w-0"} rounded-2xl border text-left transition-all cursor-pointer select-none h-full ${
                     active
                       ? "border-indigo-400 bg-linear-to-br from-indigo-50 to-violet-50 text-indigo-800 dark:from-indigo-950/60 dark:to-violet-950/40 dark:text-indigo-300 dark:border-indigo-600 shadow-md"
                       : passed
@@ -1076,7 +1077,7 @@ export default function App() {
         </div>
 
         {/* Column Right: Sticky Info Panels & Quick Clinical Help (span 4) */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="hidden lg:col-span-4 lg:block lg:space-y-6">
           
           {/* Quick interactive clinician view about patient progress */}
           <div className={`p-4 rounded-2xl border sticky top-24 ${darkMode ? "bg-slate-900/90 border-slate-800" : "bg-white border-slate-100"} shadow-sm space-y-4`}>
@@ -1209,7 +1210,7 @@ export default function App() {
       </main>
       </div>
 
-      <nav className={`fixed inset-x-3 bottom-3 z-50 grid ${isAdmin ? "grid-cols-5" : "grid-cols-4"} overflow-hidden rounded-2xl border border-white/70 bg-white/92 p-1.5 shadow-2xl shadow-slate-400/30 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/94 dark:shadow-none lg:hidden`} aria-label="Navigasi utama mobile">
+      <nav className={`mobile-primary-nav fixed inset-x-2 bottom-3 z-50 grid ${isAdmin ? "grid-cols-5" : "grid-cols-4"} overflow-hidden rounded-2xl border border-white/70 bg-white/92 p-1.5 shadow-2xl shadow-slate-400/30 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/94 dark:shadow-none sm:inset-x-3 lg:hidden`} aria-label="Navigasi utama mobile">
         {MAIN_NAV_ITEMS.map((item) => {
           const MobileIcon = item.icon;
           const active = view === item.id;

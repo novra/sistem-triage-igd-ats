@@ -10,18 +10,19 @@
   --font-sans: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* A balanced senior-friendly scale: readable without looking oversized. */
-  --text-xs: 0.9375rem;
-  --text-xs--line-height: 1.55;
-  --text-sm: 1rem;
-  --text-sm--line-height: 1.55;
-  --text-base: 1.0625rem;
-  --text-base--line-height: 1.6;
-  --text-lg: 1.1875rem;
-  --text-lg--line-height: 1.5;
-  --text-xl: 1.375rem;
+  /* Standard modern scale. The larger senior-friendly scale lives entirely
+     inside .accessibility-mode so both audiences get an intentional layout. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1rem;
+  --text-base--line-height: 1.55;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.45;
+  --text-xl: 1.25rem;
   --text-xl--line-height: 1.4;
-  --text-2xl: 1.625rem;
+  --text-2xl: 1.5rem;
   --text-2xl--line-height: 1.4;
   --text-3xl: 1.875rem;
   --text-3xl--line-height: 1.35;
@@ -37,8 +38,8 @@ html {
 
 body {
   font-family: var(--font-sans);
-  font-size: 1rem;
-  line-height: 1.6;
+  font-size: 0.9375rem;
+  line-height: 1.55;
   letter-spacing: 0.005em;
   background:
     radial-gradient(circle at 8% 0%, rgb(224 242 254 / 0.65), transparent 28rem),
@@ -68,13 +69,13 @@ textarea {
 input,
 select,
 textarea {
-  min-height: 3rem;
-  font-size: 1rem;
+  min-height: 2.75rem;
+  font-size: 0.9375rem;
   border-width: 1.5px;
 }
 
 textarea {
-  min-height: 7rem;
+  min-height: 6rem;
 }
 
 button:not([title]) {
@@ -111,13 +112,69 @@ textarea::placeholder {
 [class~="text-[10px]"],
 [class~="text-[11px]"],
 [class~="text-[12px]"] {
-  font-size: 0.9375rem !important;
-  line-height: 1.5 !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.45 !important;
 }
 
 [class~="text-md"] {
-  font-size: 1.1875rem;
+  font-size: 1.125rem;
   line-height: 1.45;
+}
+
+.standard-mode body {
+  background:
+    radial-gradient(circle at 5% -5%, rgb(125 211 252 / 0.32), transparent 25rem),
+    radial-gradient(circle at 100% 0%, rgb(167 139 250 / 0.22), transparent 28rem),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.dark.standard-mode body {
+  background:
+    radial-gradient(circle at 5% -5%, rgb(14 116 144 / 0.2), transparent 25rem),
+    radial-gradient(circle at 100% 0%, rgb(109 40 217 / 0.16), transparent 28rem),
+    #020617;
+}
+
+.standard-mode .shadow-xs.rounded-2xl.bg-white {
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.94));
+  border-color: rgb(226 232 240 / 0.85);
+  box-shadow: 0 18px 45px -34px rgb(30 41 59 / 0.65);
+}
+
+.standard-stepper {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(165 180 252) transparent;
+}
+
+.mobile-primary-nav {
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 639px) {
+  .standard-mode main {
+    gap: 1rem;
+  }
+
+  .standard-mode main [class~="p-6"].rounded-2xl,
+  .standard-mode main [class~="p-5"].rounded-2xl {
+    padding: 1rem;
+  }
+
+  .standard-mode [data-density="secondary"] {
+    display: none !important;
+  }
+}
+
+@media (max-width: 359px) {
+  .standard-mode .app-brand-logo {
+    padding: 0.625rem;
+    border-radius: 0.875rem;
+  }
+
+  .standard-mode .app-brand-title {
+    max-width: 8.5rem;
+    font-size: 0.875rem;
+  }
 }
 
 /* Aksesibilitas lanjut memperbesar ritme vertikal sekaligus mengurangi
