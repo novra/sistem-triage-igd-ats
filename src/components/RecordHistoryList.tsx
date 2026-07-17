@@ -30,18 +30,35 @@ export default function RecordHistoryList({
   currentUserId,
 }: RecordHistoryListProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [atsFilter, setAtsFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isDownloadingLog, setIsDownloadingLog] = useState(false);
 
-  const filtered = records.filter((r) => {
-    const term = searchTerm.toLowerCase();
-    return (
-      r.namaPasien.toLowerCase().includes(term) ||
-      r.nomorRM.toLowerCase().includes(term) ||
-      (r.chiefComplaint || "").toLowerCase().includes(term) ||
-      (r.atsFinal?.namaPetugas || "").toLowerCase().includes(term)
-    );
-  });
+  const filtered = records
+    .filter((r) => {
+      const term = searchTerm.trim().toLowerCase();
+      const finalLevel = r.atsFinal?.atsLevelFinal || r.atsPrediction?.atsLevel || 5;
+      const matchesSearch =
+        !term ||
+        r.namaPasien.toLowerCase().includes(term) ||
+        r.nomorRM.toLowerCase().includes(term) ||
+        (r.chiefComplaint || "").toLowerCase().includes(term) ||
+        (r.atsFinal?.namaPetugas || "").toLowerCase().includes(term);
+      const matchesAts = atsFilter === "all" || String(finalLevel) === atsFilter;
+      return matchesSearch && matchesAts;
+    })
+    .sort((a, b) => {
+      const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return sortOrder === "newest" ? bTime - aTime : aTime - bTime;
+    });
+
+  const urgentCount = records.filter((record) => {
+    const level = record.atsFinal?.atsLevelFinal || record.atsPrediction?.atsLevel || 5;
+    return level <= 2;
+  }).length;
+  const overriddenCount = records.filter((record) => Boolean(record.atsFinal?.atsLevelOverride)).length;
 
   const formatDate = (isoStr?: string) => {
     if (!isoStr) return "-";
@@ -291,24 +308,27 @@ export default function RecordHistoryList({
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs space-y-4" id="records-history-section">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+    <div className="space-y-6" id="records-history-section">
+      <div className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-linear-to-r from-white via-indigo-50 to-sky-50 p-6 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/40">
+        <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-indigo-200/40 blur-3xl dark:bg-indigo-800/20" />
+        <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <h2 className="text-md font-bold text-slate-800">Daftar Rekam Triase IGD</h2>
-          <p className="text-xs text-slate-400">
-            Log database pasien, hasil ATS, override klinis, validator, dan audit penyimpanan
+          <p className="text-sm font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Database Klinis</p>
+          <h2 className="mt-1 text-2xl font-extrabold text-slate-950 dark:text-white">Daftar Rekam Triase IGD</h2>
+          <p className="mt-2 max-w-2xl text-base font-medium text-slate-600 dark:text-slate-300">
+            Cari pasien, lihat hasil ATS, buka rincian klinis, atau muat data ke Form Utama untuk diedit.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 xl:max-w-xl xl:justify-end">
           {isAdmin && (
             <button
               id="btn-export-csv"
               onClick={exportCsv}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm"
             >
-              <Download size={14} />
-              <span>Ekspor ke CSV/Excel</span>
+              <Download size={18} />
+              <span>Ekspor CSV</span>
             </button>
           )}
 
@@ -318,8 +338,8 @@ export default function RecordHistoryList({
               onClick={onExportDataset}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-150 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
             >
-              <FileJson size={14} />
-              <span>Ekspor JSON (NLP Dataset)</span>
+              <FileJson size={18} />
+              <span>Ekspor JSON</span>
             </button>
           )}
 
@@ -330,44 +350,75 @@ export default function RecordHistoryList({
               disabled={isDownloadingLog}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm"
             >
-              <Activity size={14} />
-              <span>{isDownloadingLog ? "Menyiapkan..." : "Unduh Log Monitoring (Excel)"}</span>
+              <Activity size={18} />
+              <span>{isDownloadingLog ? "Menyiapkan..." : "Log Monitoring"}</span>
             </button>
+          )}
+        </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Total rekam tersimpan</span>
+          <strong className="mt-1 block text-2xl font-extrabold text-slate-950 dark:text-white">{records.length}</strong>
+        </div>
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 shadow-sm dark:border-rose-900 dark:bg-rose-950/25">
+          <span className="text-sm font-semibold text-rose-700 dark:text-rose-300">Prioritas tinggi ATS 1–2</span>
+          <strong className="mt-1 block text-2xl font-extrabold text-rose-800 dark:text-rose-200">{urgentCount}</strong>
+        </div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900 dark:bg-amber-950/25">
+          <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">Dengan override klinis</span>
+          <strong className="mt-1 block text-2xl font-extrabold text-amber-800 dark:text-amber-200">{overriddenCount}</strong>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(280px,1fr)_220px_220px]">
+          <div className="flex items-center gap-2 relative">
+            <input
+              id="input-search-records"
+              type="search"
+              placeholder="Cari No. RM, nama, keluhan, atau validator..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 text-base bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-indigo-500 transition"
+            />
+            <Search size={20} className="absolute left-4 text-slate-500" />
+          </div>
+          <select value={atsFilter} onChange={(event) => setAtsFilter(event.target.value)} className="rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+            <option value="all">Semua level ATS</option>
+            {[1, 2, 3, 4, 5].map((level) => <option key={level} value={level}>ATS {level}</option>)}
+          </select>
+          <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as "newest" | "oldest")} className="rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+            <option value="newest">Terbaru lebih dulu</option>
+            <option value="oldest">Terlama lebih dulu</option>
+          </select>
+        </div>
+        <div className="mt-3 flex items-center justify-between text-sm font-medium text-slate-500 dark:text-slate-400">
+          <span>Menampilkan {filtered.length} dari {records.length} rekam</span>
+          {(searchTerm || atsFilter !== "all") && (
+            <button type="button" onClick={() => { setSearchTerm(""); setAtsFilter("all"); }} className="font-bold text-indigo-700 hover:text-indigo-800 dark:text-indigo-300">Hapus filter</button>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-2 relative">
-        <input
-          id="input-search-records"
-          type="text"
-          placeholder="Cari No RM, nama pasien, keluhan, atau validator..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 transition"
-        />
-        <Search size={14} className="absolute left-3 text-slate-400" />
-      </div>
-
-      <div className="overflow-x-auto border border-slate-100 rounded-xl">
-        <table className="w-full text-left text-xs text-slate-600">
-          <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase font-bold border-b border-slate-100">
+      <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:block">
+        <table className="w-full table-fixed text-left text-sm text-slate-600 dark:text-slate-300">
+          <thead className="sticky top-0 z-10 bg-slate-100 text-sm text-slate-600 uppercase font-bold border-b border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
             <tr>
-              <th className="px-4 py-3">Waktu Triase</th>
-              <th className="px-4 py-3">No. RM</th>
-              <th className="px-4 py-3">Pasien</th>
-              <th className="px-4 py-3">Keluhan Utama</th>
-              <th className="px-4 py-3 text-center">ATS Final</th>
-              <th className="px-4 py-3">Override</th>
-              <th className="px-4 py-3">Validator</th>
-              {isAdmin && <th className="px-4 py-3">Dibuat Oleh</th>}
-              <th className="px-4 py-3 text-right">Aksi</th>
+              <th className="w-[16%] px-4 py-4">Waktu</th>
+              <th className="w-[22%] px-4 py-4">Pasien / No. RM</th>
+              <th className="w-[20%] px-4 py-4">Keluhan</th>
+              <th className="w-[14%] px-4 py-4 text-center">ATS Final</th>
+              <th className="w-[14%] px-4 py-4">Validator</th>
+              <th className="w-[14%] px-4 py-4 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 9 : 8} className="text-center py-8 text-slate-400">
+                <td colSpan={6} className="text-center py-12 text-slate-500">
                   Tidak ada rekam triage yang cocok. Silakan daftarkan pasien baru.
                 </td>
               </tr>
@@ -389,11 +440,11 @@ export default function RecordHistoryList({
                       <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-500 font-mono">
                         {formatDate(record.timestamp)}
                       </td>
-                      <td className="px-4 py-3 font-bold font-mono text-slate-800">{record.nomorRM}</td>
                       <td className="px-4 py-3">
                         <span className="font-semibold text-slate-800">{record.namaPasien}</span>
-                        <span className="block text-[10px] text-slate-400">
-                          {record.umur} Thn - {record.gender}
+                        <span className="block text-sm font-mono font-semibold text-indigo-700 dark:text-indigo-300">{record.nomorRM}</span>
+                        <span className="block text-sm text-slate-500">
+                          {record.umur} tahun · {record.gender}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -417,22 +468,6 @@ export default function RecordHistoryList({
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        {hasOverride ? (
-                          <div className="space-y-1">
-                            <span className="inline-flex px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">
-                              Aktif - ATS {record.atsFinal?.atsLevelOverride}
-                            </span>
-                            <p className="max-w-[220px] truncate text-[10px] text-slate-500" title={record.atsFinal?.alasanOverride}>
-                              {record.atsFinal?.alasanOverride || "Tanpa alasan tercatat"}
-                            </p>
-                          </div>
-                        ) : (
-                          <span className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-bold">
-                            Tidak
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
                         <span className="block max-w-[180px] truncate font-semibold text-slate-700" title={record.atsFinal?.namaPetugas}>
                           {record.atsFinal?.namaPetugas || "-"}
                         </span>
@@ -440,31 +475,26 @@ export default function RecordHistoryList({
                           {record.atsFinal?.jabatanPetugas || "-"}
                         </span>
                       </td>
-                      {isAdmin && (
-                        <td className="px-4 py-3">
-                          <span className="block max-w-[160px] truncate font-semibold text-slate-700">
-                            {record.createdByUserName || record.createdByUserEmail || "-"}
-                          </span>
-                        </td>
-                      )}
                       <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex flex-col items-stretch gap-2">
                           <button
                             type="button"
                             onClick={() => setExpandedId(isExpanded ? null : record.id || null)}
-                            className="p-1 text-slate-500 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition"
+                            className="flex items-center justify-center gap-2 rounded-lg bg-sky-50 px-3 py-2 font-bold text-sky-800 hover:bg-sky-100 dark:bg-sky-950/30 dark:text-sky-300"
                             title={isExpanded ? "Tutup Detail" : "Lihat Detail Database"}
                           >
-                            {isExpanded ? <ChevronUp size={15} /> : <Eye size={15} />}
+                            {isExpanded ? <ChevronUp size={18} /> : <Eye size={18} />}
+                            <span>{isExpanded ? "Tutup" : "Lihat"}</span>
                           </button>
                           {(isAdmin || record.createdByUserId === currentUserId) && (
                             <button
                               id={`btn-edit-rec-${record.id}`}
                               onClick={() => onSelectRecord(record)}
-                              className="p-1 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                              className="flex items-center justify-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 font-bold text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300"
                               title="Edit / Muat ke Form"
                             >
-                              <Edit3 size={15} />
+                              <Edit3 size={18} />
+                              <span>Edit</span>
                             </button>
                           )}
                           {isAdmin && (
@@ -475,10 +505,11 @@ export default function RecordHistoryList({
                                   onDeleteRecord(record.id!);
                                 }
                               }}
-                              className="p-1 text-slate-400 hover:text-rose-650 hover:bg-rose-50 rounded-lg transition"
+                              className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 font-bold text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/30"
                               title="Hapus"
                             >
-                              <Trash2 size={15} />
+                              <Trash2 size={18} />
+                              <span>Hapus</span>
                             </button>
                           )}
                         </div>
@@ -487,7 +518,7 @@ export default function RecordHistoryList({
 
                     {isExpanded && (
                       <tr className="bg-slate-50/70">
-                        <td colSpan={isAdmin ? 9 : 8} className="px-4 py-4">
+                        <td colSpan={6} className="px-4 py-4">
                           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 rounded-xl border border-slate-200 bg-white p-4">
                             <DetailSection title="Identitas dan Kunjungan">
                               <dl className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -606,6 +637,89 @@ export default function RecordHistoryList({
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:hidden">
+        {filtered.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900">
+            Tidak ada rekam triase yang sesuai dengan pencarian atau filter.
+          </div>
+        ) : filtered.map((record) => {
+          const finalLevel = record.atsFinal?.atsLevelFinal || record.atsPrediction?.atsLevel || 5;
+          const details = ATS_LEVEL_DETAILS[finalLevel as 1 | 2 | 3 | 4 | 5];
+          const isExpanded = expandedId === record.id;
+          const canEdit = isAdmin || record.createdByUserId === currentUserId;
+          const gcsTotal =
+            (record.vitalSign?.gcs?.eye ?? 4) +
+            (record.vitalSign?.gcs?.verbal ?? 5) +
+            (record.vitalSign?.gcs?.motor ?? 6);
+
+          return (
+            <article key={record.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-extrabold text-slate-950 dark:text-white">{record.namaPasien}</h3>
+                      <span className={`rounded-lg border px-2.5 py-1 text-sm font-bold ${details.badgeColor}`}>{details.name}</span>
+                    </div>
+                    <p className="mt-1 font-mono text-sm font-bold text-indigo-700 dark:text-indigo-300">{record.nomorRM}</p>
+                    <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">{formatDate(record.timestamp)}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    {record.chiefComplaint || "Keluhan tidak tercatat"}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-950/60">
+                  <div>
+                    <span className="block text-sm font-semibold text-slate-500">Umur / Gender</span>
+                    <strong className="text-sm text-slate-800 dark:text-slate-100">{record.umur} tahun · {record.gender}</strong>
+                  </div>
+                  <div>
+                    <span className="block text-sm font-semibold text-slate-500">Validator</span>
+                    <strong className="text-sm text-slate-800 dark:text-slate-100">{record.atsFinal?.namaPetugas || "-"}</strong>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <button type="button" onClick={() => setExpandedId(isExpanded ? null : record.id || null)} className="flex items-center justify-center gap-2 rounded-xl bg-sky-50 px-4 py-3 font-bold text-sky-800 hover:bg-sky-100 dark:bg-sky-950/30 dark:text-sky-300">
+                    {isExpanded ? <ChevronUp size={20} /> : <Eye size={20} />}
+                    {isExpanded ? "Tutup Detail" : "Lihat Detail"}
+                  </button>
+                  {canEdit && (
+                    <button type="button" onClick={() => onSelectRecord(record)} className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 font-bold text-white hover:bg-indigo-700">
+                      <Edit3 size={20} />
+                      Edit di Form Utama
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button type="button" onClick={() => { if (confirm("Apakah Anda yakin ingin menghapus rekam triase ini?")) onDeleteRecord(record.id!); }} className="flex items-center justify-center gap-2 rounded-xl border border-rose-200 px-4 py-3 font-bold text-rose-700 hover:bg-rose-50 dark:border-rose-900 dark:text-rose-300">
+                      <Trash2 size={20} />
+                      Hapus
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isExpanded && (
+                <div className="border-t border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/50">
+                  <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <DetailItem label="Keluhan dan detail" value={`${record.chiefComplaint || "-"}${record.chiefComplaintCustom ? ` — ${record.chiefComplaintCustom}` : ""}`} />
+                    <DetailItem label="Tanda vital" value={`TD ${record.vitalSign?.tekananDarahSistolik || "-"}/${record.vitalSign?.tekananDarahDiastolik || "-"}, HR ${record.vitalSign?.heartRate || "-"}, RR ${record.vitalSign?.respiratoryRate || "-"}, SpO₂ ${record.vitalSign?.saturasiOksigen || "-"}%`} />
+                    <DetailItem label="Kesadaran" value={`GCS ${gcsTotal}, AVPU ${record.vitalSign?.avpu || "Alert"}`} />
+                    <DetailItem label="Skala nyeri" value={`${record.painScale?.skala ?? "-"}/10 — ${record.painScale?.lokasi || "Lokasi tidak tercatat"}`} />
+                    <DetailItem label="Riwayat penyakit" value={joinList(record.riwayatPenyakit)} />
+                    <DetailItem label="Keputusan final" value={`ATS ${finalLevel} — ${details.subtitle}`} />
+                    <DetailItem label="Alasan klasifikasi" value={record.atsPrediction?.alasanKlasifikasi} />
+                    <DetailItem label="Override klinis" value={record.atsFinal?.atsLevelOverride ? `ATS ${record.atsFinal.atsLevelOverride}: ${record.atsFinal.alasanOverride || "Tanpa alasan"}` : "Tidak ada override"} />
+                    <DetailItem label="Validator" value={`${record.atsFinal?.namaPetugas || "-"} · ${record.atsFinal?.jabatanPetugas || "-"}`} />
+                  </dl>
+                </div>
+              )}
+            </article>
+          );
+        })}
       </div>
     </div>
   );

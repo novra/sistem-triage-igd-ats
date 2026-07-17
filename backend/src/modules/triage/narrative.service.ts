@@ -139,7 +139,7 @@ function findPainScale(text: string): number | null {
 export function parseNarrativeHeuristic(narrative: string) {
   const text = narrative.toLowerCase();
   const result: any = {
-    nomorRM: "RM-99001",
+    nomorRM: "",
     namaPasien: "Pasien Baru",
     umur: 30,
     gender: "Laki-laki",
@@ -284,6 +284,7 @@ ${narrative}
 """
 
 Aturan:
+- nomorRM: gunakan nomor RM hanya bila disebutkan jelas dalam narasi; bila tidak disebutkan, isi string kosong "" agar aplikasi membuat nomor RM pasien baru secara otomatis.
 - riwayatPenyakit HANYA boleh berisi nilai dari daftar berikut, pilih yang relevan (boleh lebih dari satu, kosongkan [] bila tidak disebutkan): ${HISTORIC_DISEASES.join(", ")}.
 - riwayatPenyakitLainnya: tulis riwayat penyakit/bedah/kondisi lain yang disebutkan namun tidak ada di daftar di atas, pisahkan dengan koma. Kosongkan "" bila tidak ada.
 - painScale.skala: angka 0-10 sesuai intensitas nyeri yang disebutkan; 0 bila tidak disebutkan nyeri.

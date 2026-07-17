@@ -122,6 +122,7 @@ export interface PemeriksaanFisik {
 
 export interface TriageRecord {
   id?: string;
+  patientType?: "new" | "existing";
   nomorRM: string;
   namaPasien: string;
   tanggalLahir: string;

@@ -33,10 +33,12 @@ import {
   UserCircle2,
   BookOpen,
   ClipboardList,
-  FileText
+  FileText,
+  Database
 } from "lucide-react";
 
 const INITIAL_FORM: TriageRecord = {
+  patientType: "new",
   nomorRM: "",
   namaPasien: "",
   tanggalLahir: "",
@@ -276,7 +278,7 @@ const MOCK_PRESETS = [
 export default function App() {
   const { user, logout } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [view, setView] = useState<"guide" | "triage" | "narrative" | "users">(() =>
+  const [view, setView] = useState<"guide" | "triage" | "narrative" | "records" | "users">(() =>
     localStorage.getItem("ats_guide_dismissed") === "true" ? "triage" : "guide"
   );
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -530,8 +532,11 @@ export default function App() {
   // Pre-load an existing record to continue checking or editing
   const handleLoadExistingRecord = (rec: TriageRecord) => {
     setForm({ ...rec });
-    setSuccessMsg(`Rekam triase ${rec.nomorRM} terpilih untuk diedit.`);
+    localStorage.setItem("ats_cached_form", JSON.stringify(rec));
+    setView("triage");
+    setSuccessMsg(`Rekam triase ${rec.nomorRM} dimuat ke Form Utama dan siap ditinjau atau diedit.`);
     setActiveStep(0);
+    window.scrollTo({ top: 0, behavior: "smooth" });
     setTimeout(() => setSuccessMsg(null), 3500);
   };
 
@@ -660,11 +665,12 @@ export default function App() {
               <p className="text-sm font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Menu Utama</p>
               <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-400">Pilih halaman yang ingin digunakan.</p>
             </div>
-            <nav className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1" aria-label="Navigasi utama aplikasi">
+            <nav className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1" aria-label="Navigasi utama aplikasi">
               {[
                 { id: "guide" as const, label: "Guidance", description: "Panduan alur ATS", icon: BookOpen },
                 { id: "triage" as const, label: "Form Utama", description: "Input dan analisis triase AI", icon: ClipboardList },
                 { id: "narrative" as const, label: "Pengurai Narasi", description: "Pilah narasi klinis", icon: FileText },
+                { id: "records" as const, label: "Daftar Rekam", description: "Lihat dan kelola data tersimpan", icon: Database },
               ].map((item, index) => {
                 const MenuIcon = item.icon;
                 const active = view === item.id;
@@ -730,6 +736,18 @@ export default function App() {
               aiModel={aiModel}
               setErrorMsg={setErrorMsg}
               setSuccessMsg={setSuccessMsg}
+              onRecordsChanged={fetchRecords}
+            />
+          </div>
+        ) : view === "records" ? (
+          <div className="lg:col-span-12">
+            <RecordHistoryList
+              records={records}
+              onSelectRecord={handleLoadExistingRecord}
+              onDeleteRecord={handleDeleteTriageLog}
+              onExportDataset={handleExportJsonDataset}
+              isAdmin={isAdmin}
+              currentUserId={user?.id}
             />
           </div>
         ) : view === "users" && isAdmin ? (
@@ -936,7 +954,9 @@ export default function App() {
           {/* Nested step rendering */}
           <div className="space-y-4">
             {activeStep === 0 && (
-              <IdentitasForm data={form} onChange={updateFormState} />
+              <div key={form.id || form.nomorRM || "new-patient"}>
+                <IdentitasForm data={form} onChange={updateFormState} />
+              </div>
             )}
             {activeStep === 1 && (
               <KeluhanAwalForm data={form} onChange={updateFormState} />
@@ -1019,15 +1039,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Historical Logs List */}
-          <RecordHistoryList
-            records={records}
-            onSelectRecord={handleLoadExistingRecord}
-            onDeleteRecord={handleDeleteTriageLog}
-            onExportDataset={handleExportJsonDataset}
-            isAdmin={isAdmin}
-            currentUserId={user?.id}
-          />
         </div>
 
         {/* Column Right: Sticky Info Panels & Quick Clinical Help (span 4) */}

@@ -3,7 +3,7 @@ import { classifyTriage } from "../ats/ats.service";
 import { toTrainingDataset } from "../records/export.service";
 import { requireAdmin } from "../auth/auth.middleware";
 import { recordEvent } from "../monitoring/events.repository";
-import { RecordAccessDeniedError, deleteRecord, listRecords, saveRecord } from "./triage.repository";
+import { RecordAccessDeniedError, deleteRecord, generatePatientRm, listPatients, listRecords, saveRecord } from "./triage.repository";
 import { isHeuristicResultWeak, parseNarrativeHeuristic, parseNarrativeWithAI } from "./narrative.service";
 
 export const triageRouter = Router();
@@ -117,6 +117,24 @@ triageRouter.get("/records", async (req, res, next) => {
   try {
     const records = await listRecords(req.query.search ? String(req.query.search) : undefined, req.user);
     return res.json(records);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+triageRouter.get("/patients", async (req, res, next) => {
+  try {
+    const patients = await listPatients(req.query.search ? String(req.query.search) : undefined);
+    return res.json(patients);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+triageRouter.post("/patients/generate-rm", async (_req, res, next) => {
+  try {
+    const nomorRM = await generatePatientRm();
+    return res.status(201).json({ nomorRM });
   } catch (error) {
     return next(error);
   }

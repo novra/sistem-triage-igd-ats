@@ -78,6 +78,62 @@ export async function listRecords(search?: string, actingUser?: ActingUser) {
   return result.rows.map(normalizeRecord);
 }
 
+// Direktori pasien hanya mengekspos identitas dasar dari kunjungan terbaru per
+// nomor RM. Data analisis dan catatan klinis lengkap tetap lewat akses rekam triase.
+export async function listPatients(search?: string) {
+  const params: any[] = [];
+  const conditions: string[] = [];
+  if (search?.trim()) {
+    params.push(`%${search.trim().toLowerCase()}%`);
+    conditions.push(`(
+      lower(patient_rm) like $${params.length}
+      or lower(patient_name) like $${params.length}
+    )`);
+  }
+  const where = conditions.length ? `where ${conditions.join(" and ")}` : "";
+  const result = await query(
+    `
+      select distinct on (patient_rm)
+        patient_rm, patient_name, patient_age, payload_json, updated_at
+      from triage_records
+      ${where}
+      order by patient_rm, updated_at desc
+      limit 50
+    `,
+    params,
+  );
+
+  return result.rows
+    .map((row) => {
+      const payload = row.payload_json || {};
+      return {
+        nomorRM: row.patient_rm,
+        namaPasien: row.patient_name,
+        tanggalLahir: payload.tanggalLahir || "",
+        umur: Number(payload.umur ?? row.patient_age) || 0,
+        gender: payload.gender || "Laki-laki",
+        riwayatPenyakit: Array.isArray(payload.riwayatPenyakit) ? payload.riwayatPenyakit : [],
+        riwayatPenyakitLainnya: payload.riwayatPenyakitLainnya || "",
+        terakhirDiperbarui: row.updated_at,
+      };
+    })
+    .sort((a, b) => a.namaPasien.localeCompare(b.namaPasien, "id"));
+}
+
+export async function generatePatientRm() {
+  const year = new Date().getFullYear();
+  // Sequence menjamin setiap permintaan serentak memperoleh angka berbeda.
+  // Pemeriksaan tetap dilakukan untuk menghindari benturan dengan data impor lama.
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const sequenceResult = await query<{ value: string }>("select nextval('patient_rm_seq')::text as value");
+    const sequence = String(sequenceResult.rows[0].value).padStart(7, "0");
+    const nomorRM = `RM-${year}-${sequence}`;
+    const existing = await query("select 1 from triage_records where patient_rm = $1 limit 1", [nomorRM]);
+    if (!existing.rowCount) return nomorRM;
+  }
+  throw new Error("Gagal menghasilkan nomor rekam medis unik.");
+}
+
 export async function getRecordById(id: string) {
   const result = await query(`${RECORD_SELECT} where tr.id = $1 group by tr.id, u.name, u.email`, [id]);
   return result.rows[0] ? normalizeRecord(result.rows[0]) : null;

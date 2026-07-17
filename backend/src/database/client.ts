@@ -34,6 +34,8 @@ export async function withTransaction<T>(callback: (client: PoolClient) => Promi
 
 export async function initDatabase() {
   await query(`
+    create sequence if not exists patient_rm_seq start with 1 increment by 1;
+
     create table if not exists triage_records (
       id text primary key,
       patient_rm text not null,
