@@ -93,7 +93,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             );
           })}
         </AnimatePresence>
-        <ToastPrimitive.Viewport className="fixed bottom-20 left-1/2 z-[80] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 list-none flex-col gap-2 outline-none sm:bottom-6 sm:left-auto sm:right-6 sm:translate-x-0" />
+        {/* Below the sticky header on mobile, so it never collides with the bottom nav
+            bar or a bottom-sheet dialog's sticky footer (both occupy the bottom of the
+            viewport there); bottom-right on sm+ where dialogs are centered, not full-height. */}
+        <ToastPrimitive.Viewport className="fixed left-1/2 top-20 z-[80] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 list-none flex-col gap-2 outline-none sm:bottom-6 sm:left-auto sm:right-6 sm:top-auto sm:translate-x-0" />
       </ToastPrimitive.Provider>
     </ToastContext.Provider>
   );

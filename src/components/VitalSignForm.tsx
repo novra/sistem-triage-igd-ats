@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { TriageRecord, GcsScore, VitalSign } from "../types";
 import { BrainCircuit, Heart, Info, Wind } from "lucide-react";
 import { Card } from "./ui/Card";
@@ -49,7 +49,12 @@ export default function VitalSignForm({ data, onChange }: VitalSignFormProps) {
     };
   });
 
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     onChange({ vitalSign: vitals });
   }, [vitals]);
 

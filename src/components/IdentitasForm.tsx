@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Gender, CaraDatang, TriageRecord } from "../types";
 import { User, ClipboardList, Calendar, Clock, Truck, Search, UserPlus, Users, RefreshCw, CheckCircle2 } from "lucide-react";
 import { apiFetch } from "../lib/api";
@@ -154,7 +154,12 @@ export default function IdentitasForm({ data, onChange }: IdentitasFormProps) {
     setIsPatientSelected(true);
   };
   // Automatically calculate age from Date of Birth
+  const isFirstAgeCalc = useRef(true);
   useEffect(() => {
+    if (isFirstAgeCalc.current) {
+      isFirstAgeCalc.current = false;
+      return;
+    }
     if (data.tanggalLahir) {
       const birth = new Date(data.tanggalLahir);
       if (!isNaN(birth.getTime())) {

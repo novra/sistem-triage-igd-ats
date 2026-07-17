@@ -9,6 +9,7 @@ import NyeriForm from "./NyeriForm";
 import SOAPFormView from "./SOAPFormView";
 import ImportTriageRecords from "./ImportTriageRecords";
 import ATSHasilPanel from "./ATSHasilPanel";
+import ATSResultHighlightDialog from "./ATSResultHighlightDialog";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { useConfirm } from "./ui/ConfirmDialog";
@@ -46,6 +47,7 @@ export default function NarrativeWorkspace({
   const [hasInjectedData, setHasInjectedData] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showAtsHighlight, setShowAtsHighlight] = useState(false);
 
   const updateRecord = (updates: Partial<TriageRecord>) => {
     if (injectedRecord.atsPrediction) {
@@ -108,6 +110,7 @@ export default function NarrativeWorkspace({
       const prediction = await response.json();
       setInjectedRecord((current) => ({ ...current, atsPrediction: prediction, atsFinal: undefined }));
       setSuccessMsg("Analisis ATS berhasil. Tinjau hasil dan validasi klinis sebelum menyimpan.");
+      setShowAtsHighlight(true);
       requestAnimationFrame(() => {
         document.getElementById("narrative-analysis-result")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
@@ -160,6 +163,8 @@ export default function NarrativeWorkspace({
 
   return (
     <div className="space-y-6">
+      <ATSResultHighlightDialog open={showAtsHighlight} onClose={() => setShowAtsHighlight(false)} prediction={injectedRecord.atsPrediction ?? null} />
+
       <Card padding="lg" className="border-primary/20 bg-primary/5">
         <h2 className="text-2xl font-black text-text">Pengurai dan Pemilah Narasi Klinis</h2>
         <p className="mt-2 text-base font-medium text-text-muted">

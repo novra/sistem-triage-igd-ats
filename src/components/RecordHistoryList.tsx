@@ -3,7 +3,6 @@ import { TriageRecord, ATS_LEVEL_DETAILS } from "../types";
 import {
   Activity,
   AlertOctagon,
-  ChevronUp,
   Database,
   Download,
   Edit3,
@@ -23,38 +22,28 @@ import { Badge } from "./ui/Badge";
 import { EmptyState } from "./ui/EmptyState";
 import { useToast } from "./ui/Toast";
 import { useConfirm } from "./ui/ConfirmDialog";
+import RecordDetailDialog from "./RecordDetailDialog";
+import RecordEditDialog from "./RecordEditDialog";
+import { formatDate, joinList } from "../utils/triageRecordFormat";
 
 interface RecordHistoryListProps {
   records: TriageRecord[];
-  onSelectRecord: (record: TriageRecord) => void;
   onDeleteRecord: (id: string) => void;
   onExportDataset: () => void;
+  onRecordsChanged: () => void | Promise<void>;
+  aiProvider: string;
+  aiModel: string;
   isAdmin: boolean;
   currentUserId?: string;
 }
 
-const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => {
-  const shown = value === null || value === undefined || value === "" ? "-" : value;
-  return (
-    <div className="min-w-0">
-      <dt className="text-xs font-bold uppercase tracking-wider text-text-muted">{label}</dt>
-      <dd className="mt-0.5 break-words text-xs font-medium text-text">{shown}</dd>
-    </div>
-  );
-};
-
-const DetailSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <section className="space-y-3">
-    <h4 className="border-b border-border/70 pb-1 text-xs font-black uppercase tracking-wider text-text-muted">{title}</h4>
-    {children}
-  </section>
-);
-
 export default function RecordHistoryList({
   records,
-  onSelectRecord,
   onDeleteRecord,
   onExportDataset,
+  onRecordsChanged,
+  aiProvider,
+  aiModel,
   isAdmin,
   currentUserId,
 }: RecordHistoryListProps) {
@@ -63,9 +52,11 @@ export default function RecordHistoryList({
   const [searchTerm, setSearchTerm] = useState("");
   const [atsFilter, setAtsFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isDownloadingLog, setIsDownloadingLog] = useState(false);
   const [printingRecordId, setPrintingRecordId] = useState<string | null>(null);
+  const [viewingRecord, setViewingRecord] = useState<TriageRecord | null>(null);
+  const [editingRecord, setEditingRecord] = useState<TriageRecord | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const filtered = records
     .filter((r) => {
@@ -91,55 +82,6 @@ export default function RecordHistoryList({
     return level <= 2;
   }).length;
   const overriddenCount = records.filter((record) => Boolean(record.atsFinal?.atsLevelOverride)).length;
-
-  const formatDate = (isoStr?: string) => {
-    if (!isoStr) return "-";
-    const date = new Date(isoStr);
-    return (
-      date.toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }) +
-      " " +
-      date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
-    );
-  };
-
-  const joinList = (values?: string[]) => {
-    if (!values || values.length === 0) return "-";
-    return values.join(", ");
-  };
-
-  const getTrueFindings = (group?: Record<string, boolean>) => {
-    if (!group) return "-";
-    const findings = Object.entries(group)
-      .filter(([, value]) => value)
-      .map(([key]) =>
-        key
-          .replace(/([A-Z])/g, " $1")
-          .replace(/^./, (char) => char.toUpperCase())
-      );
-    return findings.length > 0 ? findings.join(", ") : "Tidak ada temuan positif";
-  };
-
-  const getModelUsed = (record: TriageRecord) => {
-    if (record.atsPrediction?.modelUsed) return record.atsPrediction.modelUsed;
-    switch (record.atsPrediction?.providerUsed) {
-      case "Gemini":
-        return "gemini-3.5-flash";
-      case "Hugging Face":
-        return "mistralai/Mistral-7B-Instruct-v0.3";
-      case "Model Mandiri (RunPod)":
-        return "triage-qwen3-lora";
-      case "Model Mandiri (Custom Endpoint)":
-        return "Custom Endpoint";
-      case "Rule-Based":
-        return "Clinical Safety Rules v1";
-      default:
-        return "-";
-    }
-  };
 
   const exportCsv = () => {
     if (records.length === 0) {
@@ -251,7 +193,7 @@ export default function RecordHistoryList({
         r.atsPrediction?.atsLevel || "",
         r.atsPrediction?.confidenceScore || "",
         r.atsPrediction?.providerUsed || "",
-        getModelUsed(r),
+        r.atsPrediction?.modelUsed || "",
         r.atsPrediction?.emergencyIndicator ? "Ya" : "Tidak",
         joinList(r.atsPrediction?.warningConditions),
         r.atsPrediction?.alasanKlasifikasi || "",
@@ -341,6 +283,11 @@ export default function RecordHistoryList({
     if (confirmed) onDeleteRecord(record.id!);
   };
 
+  const openEdit = (record: TriageRecord) => {
+    setEditingRecord(record);
+    setIsEditOpen(true);
+  };
+
   return (
     <div className="space-y-6" id="records-history-section">
       <Card padding="lg" className="relative overflow-hidden">
@@ -350,7 +297,7 @@ export default function RecordHistoryList({
             <p className="text-sm font-bold uppercase tracking-wider text-primary">Database Klinis</p>
             <h2 className="mt-1 text-2xl font-extrabold text-text">Daftar Rekam Triase IGD</h2>
             <p className="mt-2 max-w-2xl text-base font-medium text-text-muted">
-              Cari pasien, lihat hasil ATS, buka rincian klinis, atau muat data ke Form Utama untuk diedit.
+              Cari pasien, lihat hasil ATS lewat popup detail, atau edit rekam langsung dari popup tanpa berpindah halaman.
             </p>
           </div>
 
@@ -407,13 +354,7 @@ export default function RecordHistoryList({
             const finalLevel = record.atsFinal?.atsLevelFinal || record.atsPrediction?.atsLevel || 5;
             const predictionLevel = record.atsPrediction?.atsLevel;
             const details = ATS_LEVEL_DETAILS[finalLevel as 1 | 2 | 3 | 4 | 5];
-            const hasOverride = Boolean(record.atsFinal?.atsLevelOverride);
-            const isExpanded = expandedId === record.id;
             const canEdit = isAdmin || record.createdByUserId === currentUserId;
-            const gcsTotal =
-              (record.vitalSign?.gcs?.eye ?? 4) +
-              (record.vitalSign?.gcs?.verbal ?? 5) +
-              (record.vitalSign?.gcs?.motor ?? 6);
 
             return (
               <Card key={record.id} padding="none" className="overflow-hidden">
@@ -441,14 +382,14 @@ export default function RecordHistoryList({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <Button variant="outline" size="sm" onClick={() => setExpandedId(isExpanded ? null : record.id || null)} leftIcon={isExpanded ? <ChevronUp size={16} /> : <Eye size={16} />}>
-                        {isExpanded ? "Tutup" : "Detail"}
+                      <Button variant="outline" size="sm" onClick={() => setViewingRecord(record)} leftIcon={<Eye size={16} />}>
+                        Detail
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => printPdf(record)} disabled={printingRecordId === record.id} loading={printingRecordId === record.id} leftIcon={printingRecordId !== record.id ? <Printer size={16} /> : undefined}>
                         {printingRecordId === record.id ? "Membuat..." : "PDF"}
                       </Button>
                       {canEdit && (
-                        <Button variant="primary" size="sm" onClick={() => onSelectRecord(record)} leftIcon={<Edit3 size={16} />}>
+                        <Button variant="primary" size="sm" onClick={() => openEdit(record)} leftIcon={<Edit3 size={16} />}>
                           Edit
                         </Button>
                       )}
@@ -460,117 +401,26 @@ export default function RecordHistoryList({
                     </div>
                   </div>
                 </div>
-
-                {isExpanded && (
-                  <div className="border-t border-border/70 bg-bg p-4 sm:p-5">
-                    <div className="grid grid-cols-1 gap-5 rounded-xl border border-border/70 bg-surface p-4 xl:grid-cols-2">
-                      <DetailSection title="Identitas dan Kunjungan">
-                        <dl className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                          <DetailItem label="ID Rekam" value={record.id} />
-                          <DetailItem label="No. RM" value={record.nomorRM} />
-                          <DetailItem label="Nama Pasien" value={record.namaPasien} />
-                          <DetailItem label="Tanggal Lahir" value={record.tanggalLahir} />
-                          <DetailItem label="Umur" value={`${record.umur} tahun`} />
-                          <DetailItem label="Gender" value={record.gender} />
-                          <DetailItem label="Tanggal Kunjungan" value={record.tanggalKunjungan} />
-                          <DetailItem label="Jam Kunjungan" value={record.jamKunjungan} />
-                          <DetailItem label="Cara Datang" value={record.caraDatang} />
-                        </dl>
-                      </DetailSection>
-
-                      <DetailSection title="Subjektif">
-                        <dl className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                          <DetailItem label="Keluhan Utama" value={record.chiefComplaint} />
-                          <DetailItem label="Detail Keluhan" value={record.chiefComplaintCustom} />
-                          <DetailItem label="Gejala Tambahan" value={joinList(record.gejalaTambahan)} />
-                          <DetailItem label="Riwayat Penyakit" value={joinList(record.riwayatPenyakit)} />
-                          <DetailItem label="Riwayat Lain / Catatan" value={record.riwayatPenyakitLainnya} />
-                        </dl>
-                      </DetailSection>
-
-                      <DetailSection title="Vital Sign dan Nyeri">
-                        <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                          <DetailItem label="Tekanan Darah" value={`${record.vitalSign?.tekananDarahSistolik || "-"} / ${record.vitalSign?.tekananDarahDiastolik || "-"} mmHg`} />
-                          <DetailItem label="Nadi / HR" value={`${record.vitalSign?.heartRate || "-"} x/menit`} />
-                          <DetailItem label="Respirasi / RR" value={`${record.vitalSign?.respiratoryRate || "-"} x/menit`} />
-                          <DetailItem label="Suhu" value={`${record.vitalSign?.suhuTubuh || "-"} C`} />
-                          <DetailItem label="SpO2" value={`${record.vitalSign?.saturasiOksigen || "-"}%`} />
-                          <DetailItem label="GCS" value={`E${record.vitalSign?.gcs?.eye || "-"} V${record.vitalSign?.gcs?.verbal || "-"} M${record.vitalSign?.gcs?.motor || "-"} = ${gcsTotal}`} />
-                          <DetailItem label="AVPU" value={record.vitalSign?.avpu || "Alert"} />
-                          <DetailItem label="Pola Napas" value={record.vitalSign?.polaNapas} />
-                          <DetailItem label="Otot Bantu Napas" value={record.vitalSign?.ototBantuNapas ? "Ya" : "Tidak"} />
-                          <DetailItem label="Retraksi" value={record.vitalSign?.retraksi ? "Ya" : "Tidak"} />
-                          <DetailItem label="Stridor" value={record.vitalSign?.stridor ? "Ya" : "Tidak"} />
-                          <DetailItem label="Wheezing" value={record.vitalSign?.wheezing ? "Ya" : "Tidak"} />
-                          <DetailItem label="Apnea" value={record.vitalSign?.apnea ? "Ya" : "Tidak"} />
-                          <DetailItem label="Takipnea" value={record.vitalSign?.takipnea ? "Ya" : "Tidak"} />
-                          <DetailItem label="Bradipnea" value={record.vitalSign?.bradipnea ? "Ya" : "Tidak"} />
-                          <DetailItem label="Nyeri" value={`${record.painScale?.skala ?? "-"} / 10 (${record.painScale?.kategori || "-"})`} />
-                          <DetailItem label="Lokasi Nyeri" value={record.painScale?.lokasi} />
-                          <DetailItem label="Nyeri Menjalar" value={record.painScale?.menjalar ? "Ya" : "Tidak"} />
-                        </dl>
-                      </DetailSection>
-
-                      <DetailSection title="Pemeriksaan Fisik">
-                        <dl className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                          <DetailItem label="Kepala" value={getTrueFindings(record.pemeriksaanFisik?.kepala)} />
-                          <DetailItem label="Leher" value={getTrueFindings(record.pemeriksaanFisik?.leher)} />
-                          <DetailItem label="Dada / Paru / Jantung" value={getTrueFindings(record.pemeriksaanFisik?.dada)} />
-                          <DetailItem label="Abdomen" value={getTrueFindings(record.pemeriksaanFisik?.perut)} />
-                          <DetailItem label="Ekstremitas Atas" value={getTrueFindings(record.pemeriksaanFisik?.ekstremitasAtas)} />
-                          <DetailItem label="Ekstremitas Bawah" value={getTrueFindings(record.pemeriksaanFisik?.ekstremitasBawah)} />
-                        </dl>
-                      </DetailSection>
-
-                      <DetailSection title="Analisis ATS AI">
-                        <dl className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                          <DetailItem label="ATS Prediksi" value={record.atsPrediction?.atsLevel ? `ATS ${record.atsPrediction.atsLevel}` : "-"} />
-                          <DetailItem label="Rekomendasi Model Mandiri" value={record.atsPrediction?.decisionSupport?.aiRecommendation ? `ATS ${record.atsPrediction.decisionSupport.aiRecommendation.atsLevel} — ${record.atsPrediction.decisionSupport.aiRecommendation.alasanKlasifikasi}` : "-"} />
-                          <DetailItem label="Saran Guard Rail" value={record.atsPrediction?.decisionSupport?.guardRailRecommendation ? `ATS ${record.atsPrediction.decisionSupport.guardRailRecommendation.atsLevel} — ${joinList(record.atsPrediction.decisionSupport.guardRailRecommendation.reasons)}` : "-"} />
-                          <DetailItem label="Status Perbandingan" value={record.atsPrediction?.decisionSupport?.recommendationsDiffer ? "Berbeda — memerlukan validasi nakes" : "Sama / tidak ada perbandingan"} />
-                          <DetailItem label="Skor Keyakinan" value={record.atsPrediction?.confidenceScore !== undefined ? `${record.atsPrediction.confidenceScore}%` : "-"} />
-                          <DetailItem label="Penyedia Analisis" value={record.atsPrediction?.providerUsed} />
-                          <DetailItem label="Jenis Model" value={getModelUsed(record)} />
-                          <DetailItem label="Indikator Kegawatdaruratan" value={record.atsPrediction?.emergencyIndicator ? "Ya" : "Tidak"} />
-                          <DetailItem label="Tanda Bahaya" value={joinList(record.atsPrediction?.warningConditions)} />
-                          <DetailItem label="Alasan Klasifikasi" value={record.atsPrediction?.alasanKlasifikasi} />
-                          <DetailItem label="Rekomendasi Awal" value={joinList(record.atsPrediction?.rekomendasiAwal)} />
-                        </dl>
-                      </DetailSection>
-
-                      <DetailSection title="Keputusan Final, Override, dan Validator">
-                        <dl className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                          <DetailItem label="ATS Final" value={`ATS ${finalLevel} - ${details.subtitle}`} />
-                          <DetailItem label="Status Override" value={hasOverride ? "Aktif" : "Tidak aktif"} />
-                          <DetailItem label="Level Override" value={record.atsFinal?.atsLevelOverride ? `ATS ${record.atsFinal.atsLevelOverride}` : "-"} />
-                          <DetailItem label="Alasan Override" value={record.atsFinal?.alasanOverride} />
-                          <DetailItem label="Validator" value={record.atsFinal?.namaPetugas} />
-                          <DetailItem label="Jabatan Validator" value={record.atsFinal?.jabatanPetugas} />
-                        </dl>
-                      </DetailSection>
-
-                      <DetailSection title="Audit Log Database">
-                        {record.auditLogs && record.auditLogs.length > 0 ? (
-                          <div className="space-y-2">
-                            {record.auditLogs.map((log, index) => (
-                              <div key={`${record.id}-audit-${index}`} className="rounded-lg border border-border/70 bg-bg px-3 py-2">
-                                <div className="text-xs font-semibold text-text">{log.action}</div>
-                                <div className="text-xs text-text-muted">{formatDate(log.timestamp)} - {log.user}</div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-text-muted">Belum ada audit log tersimpan.</p>
-                        )}
-                      </DetailSection>
-                    </div>
-                  </div>
-                )}
               </Card>
             );
           })}
         </div>
       )}
+
+      <RecordDetailDialog record={viewingRecord} open={Boolean(viewingRecord)} onClose={() => setViewingRecord(null)} />
+
+      <RecordEditDialog
+        key={editingRecord?.id || "edit-dialog-empty"}
+        record={editingRecord}
+        open={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        aiProvider={aiProvider}
+        aiModel={aiModel}
+        onSaved={async () => {
+          setIsEditOpen(false);
+          await onRecordsChanged();
+        }}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { TriageRecord, PainScale } from "../types";
 import { Activity, Flame, ShieldAlert } from "lucide-react";
 import { Card } from "./ui/Card";
@@ -33,7 +33,12 @@ export default function NyeriForm({ data, onChange }: NyeriFormProps) {
     };
   });
 
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     onChange({ painScale: pain });
   }, [pain]);
 

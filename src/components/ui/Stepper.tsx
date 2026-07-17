@@ -47,7 +47,7 @@ export function Stepper({ steps, activeStep, onStepClick, accessible = false }: 
               disabled={!onStepClick}
               aria-current={state === "active" ? "step" : undefined}
               className={`flex min-h-12 shrink-0 snap-start items-center gap-2.5 rounded-xl border px-3.5 py-2 text-left transition-colors ${
-                accessible ? "w-full" : "min-w-[13rem]"
+                accessible ? "w-full" : "w-52"
               } ${
                 state === "active"
                   ? "border-primary/40 bg-primary/10 text-primary"

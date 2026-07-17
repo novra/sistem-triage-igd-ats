@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { TriageRecord, PemeriksaanFisik } from "../types";
 import { BookOpen, Activity, FileText } from "lucide-react";
 import { Card } from "./ui/Card";
@@ -82,7 +82,12 @@ export default function SOAPFormView({ data, onChange }: SOAPFormViewProps) {
     return data.pemeriksaanFisik || INITIAL_PHYSICAL_EXAM;
   });
 
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     onChange({ pemeriksaanFisik: exam });
   }, [exam]);
 

@@ -8,6 +8,7 @@ import NyeriForm from "./components/NyeriForm";
 import SOAPFormView from "./components/SOAPFormView";
 import ATSHasilPanel from "./components/ATSHasilPanel";
 import ATSGuidePage from "./components/ATSGuidePage";
+import ATSResultHighlightDialog from "./components/ATSResultHighlightDialog";
 import ChangePasswordModal from "./components/ChangePasswordModal";
 import { SkeletonList } from "./components/ui/Skeleton";
 
@@ -309,6 +310,7 @@ export default function App() {
   const [records, setRecords] = useState<TriageRecord[]>([]);
   const [isClassifying, setIsClassifying] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showAtsHighlight, setShowAtsHighlight] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [displayMode, setDisplayMode] = useState<"standard" | "accessible">(() =>
     localStorage.getItem("ats_display_mode") === "accessible" ? "accessible" : "standard"
@@ -479,6 +481,7 @@ export default function App() {
 
       // Jump to step 5 (Analisis ATS) immediately to inspect output
       setActiveStep(5);
+      setShowAtsHighlight(true);
     } catch (err: any) {
       setErrorMsg("Gagal melakukan klasifikasi ATS melalui AI. Layanan atau API Key sedang sibuk.");
       setTimeout(() => setErrorMsg(null), 5000);
@@ -572,17 +575,6 @@ export default function App() {
     } catch (err) {
       setErrorMsg("Gagal mengunduh berkas training dataset.");
     }
-  };
-
-  // Pre-load an existing record to continue checking or editing
-  const handleLoadExistingRecord = (rec: TriageRecord) => {
-    setForm({ ...rec });
-    localStorage.setItem("ats_cached_form", JSON.stringify(rec));
-    setView("triage");
-    setSuccessMsg(`Rekam triase ${rec.nomorRM} dimuat ke Form Utama dan siap ditinjau atau diedit.`);
-    setActiveStep(0);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    setTimeout(() => setSuccessMsg(null), 3500);
   };
 
   // Critical warnings indicators shown on absolute sticky header for instant ER navigation
@@ -707,6 +699,8 @@ export default function App() {
         <ChangePasswordModal blocking={false} onSuccess={() => setShowChangePassword(false)} onClose={() => setShowChangePassword(false)} />
       )}
 
+      <ATSResultHighlightDialog open={showAtsHighlight} onClose={() => setShowAtsHighlight(false)} prediction={form.atsPrediction ?? null} />
+
       <div className="mx-auto grid max-w-[1600px] grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="hidden border-b border-border/70 px-4 py-6 lg:block lg:min-h-[calc(100vh-76px)] lg:border-b-0 lg:border-r">
           <div className="lg:sticky lg:top-24">
@@ -777,9 +771,11 @@ export default function App() {
             <Suspense fallback={<SkeletonList rows={5} />}>
               <RecordHistoryList
                 records={records}
-                onSelectRecord={handleLoadExistingRecord}
                 onDeleteRecord={handleDeleteTriageLog}
                 onExportDataset={handleExportJsonDataset}
+                onRecordsChanged={fetchRecords}
+                aiProvider={aiProvider}
+                aiModel={aiModel}
                 isAdmin={isAdmin}
                 currentUserId={user?.id}
               />

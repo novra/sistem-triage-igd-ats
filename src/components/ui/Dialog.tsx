@@ -13,7 +13,7 @@ export interface DialogProps {
   children?: React.ReactNode;
   footer?: React.ReactNode;
   variant?: DialogVariant;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
   showClose?: boolean;
   /** Disable outside-click / Escape dismissal — used for the blocking change-password gate. */
   dismissible?: boolean;
@@ -23,6 +23,8 @@ const SIZE_CLASSES: Record<NonNullable<DialogProps["size"]>, string> = {
   sm: "sm:max-w-sm",
   md: "sm:max-w-md",
   lg: "sm:max-w-lg",
+  xl: "sm:max-w-2xl",
+  "2xl": "sm:max-w-4xl",
 };
 
 /**
