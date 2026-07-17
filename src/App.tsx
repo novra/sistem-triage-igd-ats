@@ -761,6 +761,9 @@ export default function App() {
                 initialRecord={INITIAL_FORM}
                 aiProvider={aiProvider}
                 aiModel={aiModel}
+                isAdmin={isAdmin}
+                onAiProviderChange={handleSetAiProvider}
+                onAiModelChange={handleSetAiModel}
                 setErrorMsg={setErrorMsg}
                 setSuccessMsg={setSuccessMsg}
                 onRecordsChanged={fetchRecords}

@@ -173,7 +173,7 @@ export default function SOAPFormView({ data, onChange }: SOAPFormViewProps) {
           <h2 className="text-sm font-bold text-text">2. O — Objective: A. Vital Sign Summary</h2>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-3 md:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 text-center min-[420px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-6">
           {[
             { label: "Tekanan Darah", value: `${data.vitalSign?.tekananDarahSistolik || 120}/${data.vitalSign?.tekananDarahDiastolik || 80}`, unit: "mmHg" },
             { label: "Nadi (HR)", value: data.vitalSign?.heartRate || 80, unit: "x/m" },

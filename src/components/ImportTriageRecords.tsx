@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { TriageRecord } from "../types";
 import {
   Sparkles,
@@ -65,6 +65,15 @@ export default function ImportTriageRecords({
   const [narrative, setNarrative] = useState("");
   const [loading, setLoading] = useState(false);
   const [parsedRecord, setParsedRecord] = useState<TriageRecord | null>(null);
+  const engineLabel = aiProvider === "runpod"
+    ? "Model Mandiri"
+    : aiProvider === "huggingface"
+      ? `Hugging Face (${aiModel === "deepseek" ? "DeepSeek" : "OpenAI OSS"})`
+      : "Rule-Based Klinis";
+
+  useEffect(() => {
+    setParsedRecord(null);
+  }, [aiProvider, aiModel]);
 
   const handleLoadPreset = (text: string) => {
     setNarrative(text);
@@ -116,7 +125,7 @@ export default function ImportTriageRecords({
   const handleApplyToForm = () => {
     if (!parsedRecord) return;
     onApplyRecord(parsedRecord);
-    setSuccessMsg("Data hasil pilahan AI berhasil disuntikkan ke formulir hasil di halaman ini. Silakan periksa dan koreksi datanya.");
+    setSuccessMsg("Data hasil pilahan berhasil disuntikkan ke formulir di halaman ini. Silakan periksa dan koreksi datanya.");
     const targetElement = document.getElementById("narrative-injected-form");
     if (targetElement) {
       targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -153,11 +162,11 @@ export default function ImportTriageRecords({
       <div className="flex flex-col gap-4 border-b border-border/70 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Badge tone="primary" className="mb-1" icon={<Sparkles size={11} className="animate-pulse" />}>
-            Fitur Utama AI
+            Mesin Aktif: {engineLabel}
           </Badge>
           <h3 className="flex items-center gap-2 text-sm font-black tracking-tight text-text">Pengurai & Pemilah Narasi Klinis IGD (NLP)</h3>
           <p className="text-xs font-medium leading-relaxed text-text-muted">
-            Ketik atau tempel salinan narasi klinis bebas (verbal handover, rekam medis perawat, atau keluhan bebas). AI akan langsung memilah informasi identitas, tanda vital, lokasi nyeri, hingga kelainan fisik secara terstruktur.
+            Ketik atau tempel narasi klinis bebas. Mesin yang dipilih akan memilah identitas, tanda vital, lokasi nyeri, dan temuan fisik menjadi data terstruktur.
           </p>
         </div>
       </div>
@@ -212,9 +221,9 @@ export default function ImportTriageRecords({
       </div>
 
       {/* Submit Controls */}
-      <div className="flex items-center justify-end gap-3 border-b border-border/70 pb-5">
+      <div className="flex flex-col items-stretch justify-end gap-3 border-b border-border/70 pb-5 sm:flex-row sm:items-center">
         {narrative && (
-          <Button variant="ghost" size="sm" onClick={() => handleLoadPreset("")} leftIcon={<RotateCcw size={12} />}>
+          <Button variant="ghost" size="sm" onClick={() => handleLoadPreset("")} leftIcon={<RotateCcw size={12} />} className="w-full sm:w-auto">
             Reset
           </Button>
         )}
@@ -224,8 +233,9 @@ export default function ImportTriageRecords({
           loading={loading}
           onClick={handleParseNarrative}
           leftIcon={!loading ? <Sparkles size={14} /> : undefined}
+          className="w-full sm:w-auto"
         >
-          {loading ? "Sedang Memilah Data Triage..." : "Pilah & Strukturisasi via AI"}
+          {loading ? "Sedang Memilah Data Triase..." : "Pilah dan Strukturisasi Narasi"}
         </Button>
       </div>
 
@@ -237,7 +247,7 @@ export default function ImportTriageRecords({
               <Badge tone="secondary">Berhasil Diurai</Badge>
               <h4 className="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-primary">
                 <Terminal size={13} />
-                <span>Hasil Ekstraksi Fitur Klinis AI</span>
+                <span>Hasil Ekstraksi Data Klinis</span>
               </h4>
             </div>
 
@@ -257,7 +267,7 @@ export default function ImportTriageRecords({
             </ExtractedField>
 
             <ExtractedField label="Hasil Tanda Vital (TTV)" icon={Activity} iconTone="text-danger" className="sm:col-span-1 md:col-span-2">
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 min-[480px]:grid-cols-3">
                 {[
                   { label: "TD (mmHg)", value: `${parsedRecord.vitalSign.tekananDarahSistolik}/${parsedRecord.vitalSign.tekananDarahDiastolik}` },
                   { label: "Nadi (HR)", value: `${parsedRecord.vitalSign.heartRate}x` },

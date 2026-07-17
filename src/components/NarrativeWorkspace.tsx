@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { CheckCircle2, ClipboardList, RotateCcw, Wand2 } from "lucide-react";
+import { Activity, ArrowLeft, ArrowRight, CheckCircle2, ClipboardList, Cpu, RotateCcw, ShieldCheck, Wand2 } from "lucide-react";
 import { TriageRecord } from "../types";
 import { apiFetch } from "../lib/api";
 import IdentitasForm from "./IdentitasForm";
@@ -13,23 +13,51 @@ import ATSResultHighlightDialog from "./ATSResultHighlightDialog";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { useConfirm } from "./ui/ConfirmDialog";
+import { Stepper, type StepDef } from "./ui/Stepper";
 
 interface NarrativeWorkspaceProps {
   initialRecord: TriageRecord;
   aiProvider: string;
   aiModel: string;
+  isAdmin: boolean;
+  onAiProviderChange: (provider: string) => void;
+  onAiModelChange: (model: string) => void;
   setErrorMsg: (message: string | null) => void;
   setSuccessMsg: (message: string | null) => void;
   onRecordsChanged: () => Promise<void> | void;
 }
 
-const FORM_SECTIONS = [
-  "Identitas dan Riwayat Penyakit",
-  "Keluhan dan Gejala Tambahan",
-  "Tanda Vital dan Tingkat Kesadaran",
-  "Skala Nyeri",
-  "CPPT",
+const FORM_SECTIONS: StepDef[] = [
+  { label: "Identitas dan Riwayat Penyakit", desc: "Data pasien, kunjungan, dan komorbid" },
+  { label: "Keluhan dan Gejala Tambahan", desc: "Keluhan utama dan gejala penyerta" },
+  { label: "Tanda Vital dan Tingkat Kesadaran", desc: "Parameter fisiologis, AVPU, dan GCS" },
+  { label: "Skala Nyeri", desc: "Intensitas, lokasi, dan penjalaran" },
+  { label: "CPPT", desc: "Catatan perkembangan pasien terintegrasi" },
 ];
+
+const AI_PROVIDERS = [
+  {
+    id: "rulebased",
+    label: "Rule-Based Klinis",
+    description: "Ekstraksi cepat dan guard rail tanpa memakai model AI eksternal.",
+    icon: ShieldCheck,
+    adminOnly: false,
+  },
+  {
+    id: "runpod",
+    label: "Model Mandiri",
+    description: "Gunakan endpoint model mandiri untuk mengurai narasi dan analisis ATS.",
+    icon: Cpu,
+    adminOnly: false,
+  },
+  {
+    id: "huggingface",
+    label: "Hugging Face",
+    description: "Gunakan model AI melalui Hugging Face Router. Khusus administrator.",
+    icon: Activity,
+    adminOnly: true,
+  },
+] as const;
 
 const cloneRecord = (record: TriageRecord): TriageRecord => structuredClone(record);
 
@@ -37,6 +65,9 @@ export default function NarrativeWorkspace({
   initialRecord,
   aiProvider,
   aiModel,
+  isAdmin,
+  onAiProviderChange,
+  onAiModelChange,
   setErrorMsg,
   setSuccessMsg,
   onRecordsChanged,
@@ -59,6 +90,24 @@ export default function NarrativeWorkspace({
       atsPrediction: undefined,
       atsFinal: undefined,
     }));
+  };
+
+  const invalidateAnalysisForEngineChange = () => {
+    if (!injectedRecord.atsPrediction) return;
+    setInjectedRecord((current) => ({ ...current, atsPrediction: undefined, atsFinal: undefined }));
+    setSuccessMsg("Pilihan mesin analisis berubah. Hasil ATS sebelumnya dibatalkan dan perlu dianalisis ulang.");
+  };
+
+  const handleProviderChange = (provider: string) => {
+    if (provider === aiProvider) return;
+    invalidateAnalysisForEngineChange();
+    onAiProviderChange(provider);
+  };
+
+  const handleModelChange = (model: string) => {
+    if (model === aiModel) return;
+    invalidateAnalysisForEngineChange();
+    onAiModelChange(model);
   };
 
   const handleApplyRecord = (record: TriageRecord) => {
@@ -162,7 +211,7 @@ export default function NarrativeWorkspace({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="narrative-workspace space-y-4 sm:space-y-6">
       <ATSResultHighlightDialog open={showAtsHighlight} onClose={() => setShowAtsHighlight(false)} prediction={injectedRecord.atsPrediction ?? null} />
 
       <Card padding="lg" className="border-primary/20 bg-primary/5">
@@ -170,6 +219,74 @@ export default function NarrativeWorkspace({
         <p className="mt-2 text-base font-medium text-text-muted">
           Urai narasi bebas menjadi data terstruktur, periksa hasilnya, lalu lakukan analisis ATS dan simpan tanpa berpindah halaman.
         </p>
+      </Card>
+
+      <Card padding="md" className="border-accent/20 bg-accent/[0.035]">
+        <div className="flex items-start gap-3">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+            <Wand2 size={21} />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-lg font-black text-text">Pilih Mesin Pengurai dan Analisis</h3>
+            <p className="mt-1 text-sm font-medium leading-relaxed text-text-muted">
+              Pilihan ini digunakan untuk mengurai narasi sekaligus menjalankan analisis ATS setelah formulir diperiksa.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3" role="radiogroup" aria-label="Pilihan mesin pengurai dan analisis">
+          {AI_PROVIDERS.filter((provider) => !provider.adminOnly || isAdmin).map((provider) => {
+            const Icon = provider.icon;
+            const selected = aiProvider === provider.id;
+            return (
+              <button
+                key={provider.id}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => handleProviderChange(provider.id)}
+                className={`flex min-h-24 items-start gap-3 rounded-2xl border-2 p-4 text-left transition focus-visible:outline-primary ${
+                  selected
+                    ? "border-accent bg-accent/10 text-text ring-2 ring-accent/15"
+                    : "border-border bg-surface text-text hover:border-accent/35"
+                }`}
+              >
+                <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${selected ? "bg-accent text-accent-foreground" : "bg-black/5 text-text-muted dark:bg-white/10"}`}>
+                  <Icon size={20} />
+                </span>
+                <span className="min-w-0">
+                  <strong className="block text-base leading-snug">{provider.label}</strong>
+                  <span className="mt-1 block text-sm font-medium leading-relaxed text-text-muted">{provider.description}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {aiProvider === "huggingface" && isAdmin && (
+          <div className="mt-4 border-t border-border/70 pt-4">
+            <span className="mb-2 block text-sm font-bold text-text">Pilih model Hugging Face</span>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Model Hugging Face">
+              {[
+                { id: "openai-oss", label: "OpenAI OSS" },
+                { id: "deepseek", label: "DeepSeek" },
+              ].map((model) => (
+                <button
+                  key={model.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={aiModel === model.id}
+                  onClick={() => handleModelChange(model.id)}
+                  className={`min-h-12 rounded-xl border px-4 py-3 text-left text-sm font-bold transition ${
+                    aiModel === model.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-text-muted hover:border-primary/35"
+                  }`}
+                >
+                  {model.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </Card>
 
       <ImportTriageRecords
@@ -195,7 +312,7 @@ export default function NarrativeWorkspace({
               </p>
             </div>
           </div>
-          <Button variant="outline" className="border-danger/30 text-danger hover:bg-danger/5" onClick={handleReset} leftIcon={<RotateCcw size={19} />}>
+          <Button variant="outline" className="w-full border-danger/30 text-danger hover:bg-danger/5 sm:w-auto" onClick={handleReset} leftIcon={<RotateCcw size={19} />}>
             Reset Hasil
           </Button>
         </div>
@@ -207,32 +324,46 @@ export default function NarrativeWorkspace({
           </div>
         )}
 
-        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          {FORM_SECTIONS.map((label, index) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => setActiveSection(index)}
-              className={`min-h-16 rounded-2xl border-2 p-3 text-left text-sm font-black transition ${
-                activeSection === index ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-border bg-surface text-text-muted hover:border-primary/30"
-              }`}
-            >
-              <span className="mb-1 block font-mono text-sm opacity-60">Bagian {index + 1}</span>
-              {label}
-            </button>
-          ))}
-        </div>
+        <div className="folder-workspace mt-6">
+          <Stepper steps={FORM_SECTIONS} activeStep={activeSection} onStepClick={setActiveSection} />
 
-        <div className="mt-6">
-          {activeSection === 0 && (
-            <div key={injectedRecord.id || injectedRecord.nomorRM || "new-patient"}>
-              <IdentitasForm data={injectedRecord} onChange={updateRecord} />
+          <div className="folder-content-panel">
+            <div className="min-w-0">
+              {activeSection === 0 && (
+                <div key={injectedRecord.id || injectedRecord.nomorRM || "new-patient"}>
+                  <IdentitasForm data={injectedRecord} onChange={updateRecord} />
+                </div>
+              )}
+              {activeSection === 1 && <KeluhanAwalForm data={injectedRecord} onChange={updateRecord} />}
+              {activeSection === 2 && <VitalSignForm data={injectedRecord} onChange={updateRecord} />}
+              {activeSection === 3 && <NyeriForm data={injectedRecord} onChange={updateRecord} />}
+              {activeSection === 4 && <SOAPFormView data={injectedRecord} onChange={updateRecord} />}
             </div>
-          )}
-          {activeSection === 1 && <KeluhanAwalForm data={injectedRecord} onChange={updateRecord} />}
-          {activeSection === 2 && <VitalSignForm data={injectedRecord} onChange={updateRecord} />}
-          {activeSection === 3 && <NyeriForm data={injectedRecord} onChange={updateRecord} />}
-          {activeSection === 4 && <SOAPFormView data={injectedRecord} onChange={updateRecord} />}
+
+            <div className="mt-4 flex flex-col items-stretch gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={activeSection === 0}
+                onClick={() => setActiveSection((current) => Math.max(0, current - 1))}
+                leftIcon={<ArrowLeft size={17} />}
+                className="w-full sm:w-auto"
+              >
+                Sebelumnya
+              </Button>
+              <span className="text-center text-sm font-bold text-text-muted">Bagian {activeSection + 1} dari {FORM_SECTIONS.length}</span>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={activeSection === FORM_SECTIONS.length - 1}
+                onClick={() => setActiveSection((current) => Math.min(FORM_SECTIONS.length - 1, current + 1))}
+                rightIcon={<ArrowRight size={17} />}
+                className="w-full sm:w-auto"
+              >
+                Selanjutnya
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="mt-6 flex flex-col gap-3 border-t border-border/70 pt-6 sm:flex-row sm:items-center sm:justify-between">
@@ -247,7 +378,7 @@ export default function NarrativeWorkspace({
               loading={isClassifying}
               onClick={handleAnalyze}
               leftIcon={!isClassifying ? <Wand2 size={20} /> : undefined}
-              className="shrink-0"
+              className="w-full shrink-0 sm:w-auto"
             >
               {isClassifying ? "Menganalisis..." : "Analisis ATS dengan AI"}
             </Button>

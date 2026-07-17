@@ -154,12 +154,12 @@ export default function NyeriForm({ data, onChange }: NyeriFormProps) {
 
           <div>
             <span className="mb-2 block text-xs font-bold text-text-muted">Nyeri Menjalar Ke Area Lain?</span>
-            <div className="flex h-10.5 items-center gap-2">
+            <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
               <button
                 id="btn-menjalar-ya"
                 type="button"
                 onClick={() => setPain((prev) => ({ ...prev, menjalar: true }))}
-                className={`flex h-full flex-1 items-center justify-center gap-1.5 rounded-xl border text-xs font-bold transition ${
+                className={`flex min-h-12 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition ${
                   pain.menjalar ? "border-warning bg-warning/10 text-amber-700 ring-2 ring-warning/30 dark:text-amber-400" : "border-border text-text-muted hover:bg-bg"
                 }`}
               >
@@ -169,7 +169,7 @@ export default function NyeriForm({ data, onChange }: NyeriFormProps) {
                 id="btn-menjalar-tidak"
                 type="button"
                 onClick={() => setPain((prev) => ({ ...prev, menjalar: false }))}
-                className={`flex h-full flex-1 items-center justify-center gap-1.5 rounded-xl border text-xs font-bold transition ${
+                className={`flex min-h-12 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition ${
                   !pain.menjalar ? "border-secondary bg-secondary/10 text-secondary ring-2 ring-secondary/30" : "border-border text-text-muted hover:bg-bg"
                 }`}
               >

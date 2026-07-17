@@ -262,9 +262,9 @@ export default function IdentitasForm({ data, onChange }: IdentitasFormProps) {
                     {patients.length > 0 && (
                       <div className="mt-3 max-h-72 space-y-2 overflow-y-auto rounded-xl border border-border bg-surface p-2 shadow-lg">
                         {patients.map((patient) => (
-                          <button key={patient.nomorRM} type="button" onClick={() => selectExistingPatient(patient)} className="flex w-full items-center justify-between gap-4 rounded-xl border border-transparent p-3 text-left hover:border-primary/30 hover:bg-primary/5">
-                            <span className="min-w-0"><strong className="block truncate text-base text-text">{patient.namaPasien}</strong><span className="mt-1 block font-mono text-sm font-bold text-primary">{patient.nomorRM}</span></span>
-                            <span className="shrink-0 text-right text-sm font-medium text-text-muted"><span className="block">{patient.umur} tahun &middot; {patient.gender}</span><span className="block">{patient.tanggalLahir || "Tanggal lahir belum tercatat"}</span></span>
+                          <button key={patient.nomorRM} type="button" onClick={() => selectExistingPatient(patient)} className="flex w-full flex-col items-start justify-between gap-2 rounded-xl border border-transparent p-3 text-left hover:border-primary/30 hover:bg-primary/5 sm:flex-row sm:items-center sm:gap-4">
+                            <span className="min-w-0"><strong className="block break-words text-base text-text [overflow-wrap:anywhere]">{patient.namaPasien}</strong><span className="mt-1 block font-mono text-sm font-bold text-primary">{patient.nomorRM}</span></span>
+                            <span className="text-left text-sm font-medium text-text-muted sm:shrink-0 sm:text-right"><span className="block">{patient.umur} tahun &middot; {patient.gender}</span><span className="block">{patient.tanggalLahir || "Tanggal lahir belum tercatat"}</span></span>
                           </button>
                         ))}
                       </div>
@@ -307,11 +307,11 @@ export default function IdentitasForm({ data, onChange }: IdentitasFormProps) {
             onChange={(e) => onChange({ tanggalLahir: e.target.value })}
           />
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input id="input-umur" type="number" min="0" label="Umur (Tahun)" value={data.umur ?? ""} readOnly />
             <div>
               <span className="mb-1.5 block text-xs font-bold text-text-muted">Jenis Kelamin</span>
-              <div className="flex h-10.5 gap-1.5">
+              <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
                 <Chip selected={data.gender === Gender.LAKI_LAKI} onClick={() => onChange({ gender: Gender.LAKI_LAKI })} className="flex-1 justify-center">
                   Laki-Laki
                 </Chip>
