@@ -156,6 +156,21 @@ export interface TriageRecord {
     rekomendasiAwal: string[];
     providerUsed?: string;
     modelUsed?: string;
+    decisionSupport?: {
+      aiRecommendation: {
+        atsLevel: 1 | 2 | 3 | 4 | 5;
+        atsCategory: string;
+        confidenceScore: number;
+        alasanKlasifikasi: string;
+      };
+      guardRailRecommendation: {
+        atsLevel: 1 | 2 | 3 | 4 | 5;
+        atsCategory: string;
+        reasons: string[];
+      };
+      recommendationsDiffer: boolean;
+      guardRailApplied: boolean;
+    };
   };
   
   atsFinal?: {

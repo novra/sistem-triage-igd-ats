@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { TriageRecord, ATS_LEVEL_DETAILS } from "../types";
-import { ShieldAlert, AlertCircle, Save, Activity, CheckCircle2, UserCheck } from "lucide-react";
+import { ShieldAlert, AlertCircle, Save, Activity, CheckCircle2, UserCheck, Bot, Scale, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 interface ATSHasilPanelProps {
@@ -80,6 +80,11 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
   const levelDetails = ATS_LEVEL_DETAILS[currentLevel];
   const predictionDetails = ATS_LEVEL_DETAILS[baseLevel];
   const hasOverride = overrideLevel !== "" || Boolean(data.atsFinal?.atsLevelOverride);
+  const decisionSupport = prediction.decisionSupport;
+  const showIndependentModelComparison = Boolean(
+    prediction.providerUsed?.includes("Model Mandiri")
+      && decisionSupport?.recommendationsDiffer,
+  );
   const validatorName = namaPetugas.trim() || data.atsFinal?.namaPetugas || "Belum divalidasi";
   const validatorRole = jabatanPetugas || data.atsFinal?.jabatanPetugas || "Belum ditentukan";
 
@@ -105,6 +110,28 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
     }
 
     onSave(payload);
+  };
+
+  const chooseRecommendation = (source: "ai" | "guardrail", level: 1 | 2 | 3 | 4 | 5) => {
+    setShowOverride(true);
+    setOverrideLevel(level);
+    setReasonOverride(
+      source === "ai"
+        ? `Keputusan final nakes memilih ATS ${level} dari rekomendasi model mandiri setelah membandingkan dengan guard rail klinis.`
+        : `Keputusan final nakes memilih ATS ${level} dari saran guard rail setelah meninjau rekomendasi model mandiri.`,
+    );
+    requestAnimationFrame(() => {
+      document.getElementById("clinical-final-decision")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  };
+
+  const chooseIndependentClinicalDecision = () => {
+    setShowOverride(true);
+    setOverrideLevel("");
+    setReasonOverride("");
+    requestAnimationFrame(() => {
+      document.getElementById("clinical-final-decision")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   };
 
   return (
@@ -163,11 +190,96 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
         </div>
       </div>
 
+      {showIndependentModelComparison && decisionSupport && (
+        <section className="rounded-3xl border-2 border-amber-300 bg-linear-to-br from-amber-50 via-white to-indigo-50 p-5 shadow-md" aria-labelledby="recommendation-comparison-title">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="rounded-2xl bg-amber-100 p-3 text-amber-800">
+              <Scale size={24} />
+            </div>
+            <div>
+              <h3 id="recommendation-comparison-title" className="text-lg font-black text-slate-900">Rekomendasi AI dan Guard Rail Berbeda</h3>
+              <p className="mt-1 text-sm font-medium text-slate-600">
+                Bandingkan kedua sumber berikut. Keduanya merupakan data pendukung; keputusan ATS final tetap ditetapkan dan divalidasi oleh nakes.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <article className="rounded-2xl border border-indigo-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-indigo-800">
+                  <Bot size={20} />
+                  <h4 className="font-black">Rekomendasi Model Mandiri</h4>
+                </div>
+                <span className="rounded-xl bg-indigo-700 px-3 py-1.5 text-sm font-black text-white">ATS {decisionSupport.aiRecommendation.atsLevel}</span>
+              </div>
+              <p className="mt-3 text-base font-black text-slate-900">{ATS_LEVEL_DETAILS[decisionSupport.aiRecommendation.atsLevel].name}</p>
+              <p className="text-sm font-bold text-slate-500">Confidence AI {decisionSupport.aiRecommendation.confidenceScore}%</p>
+              <p className="mt-3 text-sm font-medium leading-relaxed text-slate-700">{decisionSupport.aiRecommendation.alasanKlasifikasi}</p>
+              <button
+                type="button"
+                onClick={() => chooseRecommendation("ai", decisionSupport.aiRecommendation.atsLevel)}
+                className="mt-4 w-full rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-3 font-black text-indigo-800 hover:bg-indigo-100"
+              >
+                Tetapkan ATS {decisionSupport.aiRecommendation.atsLevel} sebagai Keputusan Nakes
+              </button>
+            </article>
+
+            <article className="rounded-2xl border border-amber-300 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-amber-800">
+                  <ShieldCheck size={20} />
+                  <h4 className="font-black">Saran Guard Rail Rule-Based</h4>
+                </div>
+                <span className="rounded-xl bg-amber-500 px-3 py-1.5 text-sm font-black text-slate-950">ATS {decisionSupport.guardRailRecommendation.atsLevel}</span>
+              </div>
+              <p className="mt-3 text-base font-black text-slate-900">{ATS_LEVEL_DETAILS[decisionSupport.guardRailRecommendation.atsLevel].name}</p>
+              <p className="text-sm font-bold text-slate-500">
+                {decisionSupport.guardRailApplied ? "Guard rail diterapkan sebagai pengaman sistem" : "Guard rail ditampilkan sebagai pembanding"}
+              </p>
+              <ul className="mt-3 space-y-2 text-sm font-medium leading-relaxed text-slate-700">
+                {decisionSupport.guardRailRecommendation.reasons.map((reason, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-amber-600" />
+                    <span>{reason.replace(/^Rule-Based ATS [1-5]:\s*/, "")}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={() => chooseRecommendation("guardrail", decisionSupport.guardRailRecommendation.atsLevel)}
+                className="mt-4 w-full rounded-xl border border-amber-400 bg-amber-50 px-4 py-3 font-black text-amber-900 hover:bg-amber-100"
+              >
+                Tetapkan ATS {decisionSupport.guardRailRecommendation.atsLevel} sebagai Keputusan Nakes
+              </button>
+            </article>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50/80 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h4 className="font-black text-sky-950">Keputusan berbeda dari kedua rekomendasi?</h4>
+                <p className="mt-1 text-sm font-medium text-sky-800">
+                  Nakes dapat menetapkan level ATS lain berdasarkan pemeriksaan langsung dan pertimbangan klinis profesional.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={chooseIndependentClinicalDecision}
+                className="shrink-0 rounded-xl bg-sky-700 px-4 py-3 font-black text-white shadow-sm hover:bg-sky-800"
+              >
+                Tetapkan ATS Lain
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-3">
           <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Prediksi ATS Awal
+              Hasil Sistem Sebelum Validasi
             </h3>
             <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
               {prediction.providerUsed || "Rule-Based"}
@@ -299,10 +411,10 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
       </div>
 
       {/* Override mechanism */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-3">
+      <div id="clinical-final-decision" className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Clinical Manual Override (Dokter/Perawat)
+            Keputusan Final Nakes (Dokter/Perawat)
           </h3>
           <button
             id="btn-toggle-override"
@@ -316,6 +428,9 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
 
         {showOverride && (
           <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl space-y-3">
+            <p className="rounded-xl border border-amber-200 bg-white p-3 text-xs font-semibold leading-relaxed text-slate-700">
+              Pilih rekomendasi AI, saran guard rail, atau level ATS lain sesuai hasil asesmen langsung. Keputusan dan alasan di bawah akan dicatat sebagai keputusan final nakes.
+            </p>
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">
                 Ubah Level ATS Menjadi:

@@ -612,6 +612,9 @@ export default function RecordHistoryList({
                             <DetailSection title="Analisis ATS AI">
                               <dl className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <DetailItem label="ATS Prediksi" value={record.atsPrediction?.atsLevel ? `ATS ${record.atsPrediction.atsLevel}` : "-"} />
+                                <DetailItem label="Rekomendasi Model Mandiri" value={record.atsPrediction?.decisionSupport?.aiRecommendation ? `ATS ${record.atsPrediction.decisionSupport.aiRecommendation.atsLevel} — ${record.atsPrediction.decisionSupport.aiRecommendation.alasanKlasifikasi}` : "-"} />
+                                <DetailItem label="Saran Guard Rail" value={record.atsPrediction?.decisionSupport?.guardRailRecommendation ? `ATS ${record.atsPrediction.decisionSupport.guardRailRecommendation.atsLevel} — ${joinList(record.atsPrediction.decisionSupport.guardRailRecommendation.reasons)}` : "-"} />
+                                <DetailItem label="Status Perbandingan" value={record.atsPrediction?.decisionSupport?.recommendationsDiffer ? "Berbeda — memerlukan validasi nakes" : "Sama / tidak ada perbandingan"} />
                                 <DetailItem label="Skor Keyakinan" value={record.atsPrediction?.confidenceScore !== undefined ? `${record.atsPrediction.confidenceScore}%` : "-"} />
                                 <DetailItem label="Penyedia Analisis" value={record.atsPrediction?.providerUsed} />
                                 <DetailItem label="Jenis Model" value={getModelUsed(record)} />
@@ -740,6 +743,7 @@ export default function RecordHistoryList({
                     <DetailItem label="Skala nyeri" value={`${record.painScale?.skala ?? "-"}/10 — ${record.painScale?.lokasi || "Lokasi tidak tercatat"}`} />
                     <DetailItem label="Riwayat penyakit" value={joinList(record.riwayatPenyakit)} />
                     <DetailItem label="Keputusan final" value={`ATS ${finalLevel} — ${details.subtitle}`} />
+                    <DetailItem label="AI vs Guard Rail" value={record.atsPrediction?.decisionSupport?.recommendationsDiffer ? `AI ATS ${record.atsPrediction.decisionSupport.aiRecommendation.atsLevel} · Guard Rail ATS ${record.atsPrediction.decisionSupport.guardRailRecommendation.atsLevel}` : "Tidak berbeda / tidak tersedia"} />
                     <DetailItem label="Alasan klasifikasi" value={record.atsPrediction?.alasanKlasifikasi} />
                     <DetailItem label="Override klinis" value={record.atsFinal?.atsLevelOverride ? `ATS ${record.atsFinal.atsLevelOverride}: ${record.atsFinal.alasanOverride || "Tanpa alasan"}` : "Tidak ada override"} />
                     <DetailItem label="Validator" value={`${record.atsFinal?.namaPetugas || "-"} · ${record.atsFinal?.jabatanPetugas || "-"}`} />

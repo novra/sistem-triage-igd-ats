@@ -415,6 +415,12 @@ export async function classifyTriage(
   }
 
   const parsedLevel = readAtsLevel(aiResult);
+  const hasIndependentAiResult = Boolean(parsedLevel && providerUsed !== "Rule-Based");
+  const aiSuggestedLevel = hasIndependentAiResult ? parsedLevel : null;
+  const aiSuggestedReason = hasIndependentAiResult
+    ? String(aiResult?.alasanKlasifikasi || "Model tidak memberikan alasan klasifikasi.")
+    : null;
+  const aiSuggestedConfidence = hasIndependentAiResult ? Number(aiResult?.confidenceScore) || 0 : null;
   if (!aiResult || !parsedLevel) {
     aiResult = ruleFallback(ruleResult);
   }
@@ -432,6 +438,16 @@ export async function classifyTriage(
     finalEmergency = true;
   }
 
+  const guardRailLevel = ruleResult.overrideLevel;
+  const recommendationsDiffer = Boolean(
+    aiSuggestedLevel && guardRailLevel && aiSuggestedLevel !== guardRailLevel,
+  );
+  const guardRailReasons = guardRailLevel
+    ? ruleResult.warnings.filter((warning) =>
+        warning.startsWith(`Rule-Based ATS ${guardRailLevel}:`) || !warning.startsWith("Rule-Based ATS "),
+      )
+    : [];
+
   logger.info(
     {
       aiProviderRequested: aiProvider || "rulebased",
@@ -439,6 +455,9 @@ export async function classifyTriage(
       modelUsed,
       aiFailed,
       ruleOverrode,
+      aiSuggestedLevel,
+      guardRailLevel,
+      recommendationsDiffer,
       finalAtsLevel,
       emergencyIndicator: finalEmergency,
       durationMs: Date.now() - startedAt,
@@ -453,7 +472,15 @@ export async function classifyTriage(
     model: modelUsed,
     atsLevel: finalAtsLevel,
     durationMs: Date.now() - startedAt,
-    detail: { aiProviderRequested: aiProvider || "rulebased", aiFailed, ruleOverrode, emergencyIndicator: finalEmergency },
+    detail: {
+      aiProviderRequested: aiProvider || "rulebased",
+      aiFailed,
+      ruleOverrode,
+      aiSuggestedLevel,
+      guardRailLevel,
+      recommendationsDiffer,
+      emergencyIndicator: finalEmergency,
+    },
     userId: actingUser?.id,
     userEmail: actingUser?.email,
   });
@@ -473,11 +500,30 @@ export async function classifyTriage(
     confidenceScore: aiResult.confidenceScore || 90,
     warningConditions: Array.from(new Set(finalWarnings)),
     emergencyIndicator: finalEmergency,
-    alasanKlasifikasi: aiResult.alasanKlasifikasi || "Ditentukan berdasarkan kriteria fisiologis standar ATS.",
+    alasanKlasifikasi: ruleOverrode
+      ? `Guard rail klinis menaikkan prioritas dari ATS ${aiSuggestedLevel} menjadi ATS ${guardRailLevel} berdasarkan red flag yang terdeteksi. Keputusan final tetap memerlukan validasi nakes.`
+      : aiResult.alasanKlasifikasi || "Ditentukan berdasarkan kriteria fisiologis standar ATS.",
     informasiKlinisDigunakan: Array.from(new Set(clinicalInfo)),
     informasiTambahanDiperlukan: Array.from(new Set(missingInfo)),
     rekomendasiAwal: aiResult.rekomendasiAwal || ["Siapkan ruang resusitasi", "Pasang jalur infus intravena"],
     providerUsed,
     modelUsed,
+    decisionSupport: hasIndependentAiResult && aiSuggestedLevel && guardRailLevel
+      ? {
+          aiRecommendation: {
+            atsLevel: aiSuggestedLevel,
+            atsCategory: atsCategoryLabels[aiSuggestedLevel],
+            confidenceScore: aiSuggestedConfidence || 0,
+            alasanKlasifikasi: aiSuggestedReason || "Model tidak memberikan alasan klasifikasi.",
+          },
+          guardRailRecommendation: {
+            atsLevel: guardRailLevel,
+            atsCategory: atsCategoryLabels[guardRailLevel],
+            reasons: guardRailReasons,
+          },
+          recommendationsDiffer,
+          guardRailApplied: ruleOverrode,
+        }
+      : undefined,
   };
 }
