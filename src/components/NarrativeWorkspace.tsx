@@ -80,6 +80,16 @@ export default function NarrativeWorkspace({
   const [isSaving, setIsSaving] = useState(false);
   const [showAtsHighlight, setShowAtsHighlight] = useState(false);
 
+  const navigateToNarrativeSection = (nextSection: number) => {
+    setActiveSection(nextSection);
+    requestAnimationFrame(() => {
+      document.getElementById("narrative-form-tabs")?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+  };
+
   const updateRecord = (updates: Partial<TriageRecord>) => {
     if (injectedRecord.atsPrediction) {
       setSuccessMsg("Data klinis berubah. Hasil ATS sebelumnya dibatalkan agar tidak memakai data yang sudah lama.");
@@ -142,7 +152,7 @@ export default function NarrativeWorkspace({
     }
     if (!injectedRecord.nomorRM || !injectedRecord.namaPasien) {
       setErrorMsg("Nomor RM dan Nama Pasien wajib dilengkapi sebelum analisis ATS.");
-      setActiveSection(0);
+      navigateToNarrativeSection(0);
       return;
     }
 
@@ -324,8 +334,8 @@ export default function NarrativeWorkspace({
           </div>
         )}
 
-        <div className="folder-workspace mt-6">
-          <Stepper steps={FORM_SECTIONS} activeStep={activeSection} onStepClick={setActiveSection} />
+        <div id="narrative-form-tabs" className="folder-workspace mt-6 scroll-mt-24">
+          <Stepper steps={FORM_SECTIONS} activeStep={activeSection} onStepClick={navigateToNarrativeSection} />
 
           <div className="folder-content-panel">
             <div className="min-w-0">
@@ -345,7 +355,7 @@ export default function NarrativeWorkspace({
                 variant="outline"
                 size="sm"
                 disabled={activeSection === 0}
-                onClick={() => setActiveSection((current) => Math.max(0, current - 1))}
+                onClick={() => navigateToNarrativeSection(Math.max(0, activeSection - 1))}
                 leftIcon={<ArrowLeft size={17} />}
                 className="w-full sm:w-auto"
               >
@@ -356,7 +366,7 @@ export default function NarrativeWorkspace({
                 variant="primary"
                 size="sm"
                 disabled={activeSection === FORM_SECTIONS.length - 1}
-                onClick={() => setActiveSection((current) => Math.min(FORM_SECTIONS.length - 1, current + 1))}
+                onClick={() => navigateToNarrativeSection(Math.min(FORM_SECTIONS.length - 1, activeSection + 1))}
                 rightIcon={<ArrowRight size={17} />}
                 className="w-full sm:w-auto"
               >

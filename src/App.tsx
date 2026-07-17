@@ -326,6 +326,16 @@ export default function App() {
     return localStorage.getItem("ats_ai_model") || "openai-oss";
   });
 
+  const navigateToMainStep = (nextStep: number) => {
+    setActiveStep(nextStep);
+    requestAnimationFrame(() => {
+      document.getElementById("main-triage-form-tabs")?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+  };
+
   // Bridges legacy setErrorMsg/setSuccessMsg(message | null) call sites — used
   // throughout this file and passed down to NarrativeWorkspace/ImportTriageRecords
   // unchanged — onto the new toast system. Passing null is a no-op (toasts
@@ -430,7 +440,7 @@ export default function App() {
     };
     setForm(freshRecord);
     localStorage.setItem("ats_cached_form", JSON.stringify(freshRecord));
-    setActiveStep(2); // Jump to vital sign/complaint checking
+    navigateToMainStep(2); // Jump to vital sign/complaint checking
     setSuccessMsg(`Berhasil memuat preset kasus: ${preset.name}`);
     setTimeout(() => setSuccessMsg(null), 4000);
   };
@@ -447,7 +457,7 @@ export default function App() {
     if (confirmed) {
       setForm({ ...INITIAL_FORM });
       localStorage.removeItem("ats_cached_form");
-      setActiveStep(0);
+      navigateToMainStep(0);
     }
   };
 
@@ -455,7 +465,7 @@ export default function App() {
   const handleTriggerAISystem = async () => {
     if (!form.nomorRM || !form.namaPasien) {
       setErrorMsg("Harap melengkapi Nomor RM & Nama Pasien terlebih dahulu di langkah pertama.");
-      setActiveStep(0);
+      navigateToMainStep(0);
       setTimeout(() => setErrorMsg(null), 5000);
       return;
     }
@@ -481,7 +491,7 @@ export default function App() {
       updateFormState({ atsPrediction: classificationOutput });
 
       // Jump to step 5 (Analisis ATS) immediately to inspect output
-      setActiveStep(5);
+      navigateToMainStep(5);
       setShowAtsHighlight(true);
     } catch (err: any) {
       setErrorMsg("Gagal melakukan klasifikasi ATS melalui AI. Layanan atau API Key sedang sibuk.");
@@ -874,8 +884,8 @@ export default function App() {
             </div>
           </Card>
 
-          <div className="folder-workspace">
-            <Stepper steps={STEPS} activeStep={activeStep} onStepClick={setActiveStep} accessible={displayMode === "accessible"} />
+          <div id="main-triage-form-tabs" className="folder-workspace scroll-mt-24">
+            <Stepper steps={STEPS} activeStep={activeStep} onStepClick={navigateToMainStep} accessible={displayMode === "accessible"} />
 
             {/* Nested step rendering */}
             <AnimatePresence mode="wait">
@@ -913,7 +923,7 @@ export default function App() {
 
           {/* Stepper Footer Action Controls */}
           <div className="flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <Button variant="outline" size="sm" disabled={activeStep === 0} onClick={() => setActiveStep((prev) => Math.max(0, prev - 1))} leftIcon={<ArrowLeft className="size-3.5" />}>
+            <Button variant="outline" size="sm" disabled={activeStep === 0} onClick={() => navigateToMainStep(Math.max(0, activeStep - 1))} leftIcon={<ArrowLeft className="size-3.5" />}>
               Kembali
             </Button>
 
@@ -923,7 +933,7 @@ export default function App() {
               </Button>
 
               {activeStep < 5 && (
-                <Button variant="primary" size="sm" onClick={() => setActiveStep((prev) => Math.min(STEPS.length - 1, prev + 1))} rightIcon={<ArrowRight className="size-3.5" />}>
+                <Button variant="primary" size="sm" onClick={() => navigateToMainStep(Math.min(STEPS.length - 1, activeStep + 1))} rightIcon={<ArrowRight className="size-3.5" />}>
                   Selanjutnya
                 </Button>
               )}

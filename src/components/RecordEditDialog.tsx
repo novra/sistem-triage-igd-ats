@@ -46,6 +46,16 @@ export default function RecordEditDialog({ record, open, onClose, aiProvider, ai
   const [isSaving, setIsSaving] = useState(false);
   const [showAtsHighlight, setShowAtsHighlight] = useState(false);
 
+  const navigateToEditSection = (nextSection: number) => {
+    setActiveSection(nextSection);
+    requestAnimationFrame(() => {
+      document.getElementById("record-edit-form-tabs")?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+  };
+
   if (!record) return null;
 
   const updateRecord = (updates: Partial<TriageRecord>) => {
@@ -133,12 +143,12 @@ export default function RecordEditDialog({ record, open, onClose, aiProvider, ai
         description={record.nomorRM}
         footer={
           <div className="flex w-full flex-wrap items-center justify-between gap-2">
-            <Button variant="outline" size="sm" disabled={activeSection === 0} onClick={() => setActiveSection((prev) => Math.max(0, prev - 1))}>
+            <Button variant="outline" size="sm" disabled={activeSection === 0} onClick={() => navigateToEditSection(Math.max(0, activeSection - 1))}>
               Kembali
             </Button>
             <div className="flex flex-wrap items-center gap-2">
               {activeSection < FORM_SECTIONS.length - 1 && (
-                <Button variant="outline" size="sm" onClick={() => setActiveSection((prev) => Math.min(FORM_SECTIONS.length - 1, prev + 1))}>
+                <Button variant="outline" size="sm" onClick={() => navigateToEditSection(Math.min(FORM_SECTIONS.length - 1, activeSection + 1))}>
                   Lanjut
                 </Button>
               )}
@@ -158,8 +168,8 @@ export default function RecordEditDialog({ record, open, onClose, aiProvider, ai
           </div>
         }
       >
-        <div className="folder-workspace">
-          <Stepper steps={FORM_SECTIONS} activeStep={activeSection} onStepClick={setActiveSection} />
+        <div id="record-edit-form-tabs" className="folder-workspace scroll-mt-6">
+          <Stepper steps={FORM_SECTIONS} activeStep={activeSection} onStepClick={navigateToEditSection} />
 
           <div className="folder-content-panel space-y-4">
             <div>
