@@ -151,8 +151,8 @@ const INITIAL_FORM: TriageRecord = {
 };
 
 const STEPS = [
-  { label: "Identitas GD", desc: "No RM, umur & asal datang" },
-  { label: "Keluhan dan Riwayat Penyakit", desc: "Keluhan, gejala, dan komorbid" },
+  { label: "Identitas dan Riwayat Penyakit", desc: "Data pasien, kunjungan, dan komorbid" },
+  { label: "Keluhan dan Gejala Tambahan", desc: "Keluhan utama dan gejala penyerta" },
   { label: "Tanda Vital dan Tingkat Kesadaran", desc: "Parameter fisiologis, AVPU, dan GCS" },
   { label: "Skala Nyeri", desc: "Intensitas, lokasi & radiasi" },
   { label: "CPPT", desc: "Catatan perkembangan terintegrasi" },
@@ -871,40 +871,42 @@ export default function App() {
             </div>
           </Card>
 
-          <Stepper steps={STEPS} activeStep={activeStep} onStepClick={setActiveStep} accessible={displayMode === "accessible"} />
+          <div className="folder-workspace">
+            <Stepper steps={STEPS} activeStep={activeStep} onStepClick={setActiveStep} accessible={displayMode === "accessible"} />
 
-          {/* Nested step rendering */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeStep}
-              variants={pageTransition}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="space-y-4"
-            >
-              {activeStep === 0 && (
-                <div key={form.id || form.nomorRM || "new-patient"}>
-                  <IdentitasForm data={form} onChange={updateFormState} />
-                </div>
-              )}
-              {activeStep === 1 && (
-                <KeluhanAwalForm data={form} onChange={updateFormState} />
-              )}
-              {activeStep === 2 && (
-                <VitalSignForm data={form} onChange={updateFormState} />
-              )}
-              {activeStep === 3 && (
-                <NyeriForm data={form} onChange={updateFormState} />
-              )}
-              {activeStep === 4 && (
-                <SOAPFormView data={form} onChange={updateFormState} />
-              )}
-              {activeStep === 5 && (
-                <ATSHasilPanel data={form} onSave={handleSaveTriageLog} isSaving={isSaving} />
-              )}
-            </motion.div>
-          </AnimatePresence>
+            {/* Nested step rendering */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeStep}
+                variants={pageTransition}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="folder-content-panel space-y-4"
+              >
+                {activeStep === 0 && (
+                  <div key={form.id || form.nomorRM || "new-patient"}>
+                    <IdentitasForm data={form} onChange={updateFormState} />
+                  </div>
+                )}
+                {activeStep === 1 && (
+                  <KeluhanAwalForm data={form} onChange={updateFormState} />
+                )}
+                {activeStep === 2 && (
+                  <VitalSignForm data={form} onChange={updateFormState} />
+                )}
+                {activeStep === 3 && (
+                  <NyeriForm data={form} onChange={updateFormState} />
+                )}
+                {activeStep === 4 && (
+                  <SOAPFormView data={form} onChange={updateFormState} />
+                )}
+                {activeStep === 5 && (
+                  <ATSHasilPanel data={form} onSave={handleSaveTriageLog} isSaving={isSaving} />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
 
           {/* Stepper Footer Action Controls */}
           <div className="flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between">

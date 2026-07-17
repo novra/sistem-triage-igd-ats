@@ -36,16 +36,16 @@ const phases = [
     icon: ClipboardList,
     steps: [
       {
-        title: "Registrasi dan Identitas",
+        title: "Identitas dan Riwayat Penyakit",
         icon: UserRound,
-        summary: "Kenali pasien dan konteks kedatangannya.",
-        details: ["Nomor rekam medis dan identitas", "Umur serta jenis kelamin", "Waktu dan cara kedatangan"],
+        summary: "Kenali pasien, konteks kedatangan, dan kondisi penyertanya.",
+        details: ["Nomor rekam medis dan identitas", "Waktu dan cara kedatangan", "Riwayat penyakit, komorbid, dan alergi"],
       },
       {
-        title: "Keluhan dan Riwayat Penyakit",
+        title: "Keluhan dan Gejala Tambahan",
         icon: FileText,
-        summary: "Catat masalah utama dan kondisi penyerta.",
-        details: ["Keluhan utama dan narasi klinis", "Gejala tambahan yang dirasakan", "Riwayat penyakit, komorbid, dan alergi"],
+        summary: "Catat masalah utama dan gejala penyerta pasien.",
+        details: ["Kategori keluhan utama", "Narasi atau detail keluhan klinis", "Gejala tambahan yang dirasakan atau diamati"],
       },
       {
         title: "Tanda Vital dan Tingkat Kesadaran",

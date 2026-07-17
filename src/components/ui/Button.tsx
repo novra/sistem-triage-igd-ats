@@ -70,7 +70,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...rest}
       >
         {loading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : leftIcon}
-        {children && <span className="min-w-0 truncate">{children}</span>}
+        {children && <span className="min-w-0 whitespace-normal break-words text-center leading-snug">{children}</span>}
         {!loading && rightIcon}
       </motion.button>
     );

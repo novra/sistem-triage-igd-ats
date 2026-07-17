@@ -52,24 +52,24 @@ export default function ATSFlowDiagram() {
       steps: [
         {
           id: 1,
-          title: "Registrasi & Identitas",
+          title: "Identitas dan Riwayat Penyakit",
           icon: User,
-          desc: "Petugas mendaftarkan identitas dasar pasien.",
+          desc: "Petugas mencatat identitas dan riwayat penyakit pasien.",
           details: [
             "Nomor Rekam Medis (RM) unik",
             "Kalkulasi umur dari tanggal lahir",
-            "Metode kedatangan (ambulans, jalan sendiri, dll.)"
+            "Metode kedatangan dan riwayat penyakit/komorbiditas"
           ]
         },
         {
           id: 2,
-          title: "Keluhan dan Riwayat Penyakit",
+          title: "Keluhan dan Gejala Tambahan",
           icon: FileText,
           desc: "Investigasi keluhan utama & penyerta pasien.",
           details: [
             "Chief complaint dari kategori standar",
             "Narasi bebas klinis (opsional, bisa dipilah otomatis)",
-            "Gejala tambahan & riwayat penyakit/komorbiditas"
+            "Gejala tambahan yang dirasakan atau diamati"
           ]
         },
         {
@@ -262,7 +262,7 @@ export default function ATSFlowDiagram() {
             <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
               Alur Keputusan Triase ATS
             </h3>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+            <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
               3 tahap: petugas mengisi data → sistem menghitung otomatis → klinisi memvalidasi
             </p>
           </div>
@@ -284,10 +284,10 @@ export default function ATSFlowDiagram() {
                     <LaneIcon size={14} />
                   </div>
                   <div className="min-w-0">
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${palette.laneText}`}>
+                    <span className={`text-xs font-black uppercase tracking-widest ${palette.laneText}`}>
                       {lane.label}
                     </span>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate">
+                    <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
                       {lane.actor}
                     </p>
                   </div>
@@ -314,16 +314,16 @@ export default function ATSFlowDiagram() {
                             <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? "bg-white/45 dark:bg-white/10" : "bg-slate-200/50 dark:bg-slate-800"}`}>
                               <IconComp size={14} />
                             </div>
-                            <span className="text-[10px] uppercase font-bold tracking-wider opacity-90 truncate">
+                            <span className="break-words text-xs uppercase font-bold leading-snug tracking-wider opacity-90">
                               {step.title}
                             </span>
                           </div>
 
-                          <p className="text-[10px] leading-relaxed font-medium opacity-80 min-h-[30px]">
+                          <p className="text-xs leading-relaxed font-medium opacity-80 min-h-[2.75rem]">
                             {step.desc}
                           </p>
 
-                          <div className={`mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[9px] font-bold ${colors.link}`}>
+                          <div className={`mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold ${colors.link}`}>
                             <span>Lihat rincian</span>
                             <ChevronDown size={10} className={`transform transition-transform ${isSelected ? "rotate-180" : ""}`} />
                           </div>
@@ -360,7 +360,7 @@ export default function ATSFlowDiagram() {
             <div className="p-4 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/40 animate-fade-in">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-1.5 h-3 bg-indigo-600 rounded-full" />
-                <h4 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest">
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest">
                   {activeStepData.title}
                 </h4>
               </div>
@@ -369,7 +369,7 @@ export default function ATSFlowDiagram() {
               </p>
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {activeStepData.details.map((detail, index) => (
-                  <li key={index} className="flex items-center gap-2 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+                  <li key={index} className="flex items-start gap-2 text-xs font-semibold leading-relaxed text-slate-700 dark:text-slate-300">
                     <span className="text-indigo-500 font-black">✓</span>
                     <span>{detail}</span>
                   </li>
@@ -377,7 +377,7 @@ export default function ATSFlowDiagram() {
               </ul>
             </div>
           ) : (
-            <div className="text-center py-2.5 bg-slate-50/50 dark:bg-slate-900/30 rounded-2xl border border-dashed border-slate-150 dark:border-slate-800 text-[10px] text-slate-400 font-medium">
+            <div className="text-center py-3 bg-slate-50/50 dark:bg-slate-900/30 rounded-2xl border border-dashed border-slate-150 dark:border-slate-800 text-xs leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
               💡 Klik salah satu langkah di atas untuk melihat rincian kriteria & data yang dipakai.
             </div>
           )}
@@ -385,18 +385,18 @@ export default function ATSFlowDiagram() {
           {/* Pipeline Summary Text Block for Instant Visualization */}
           <div className="p-4 bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-2xl grid grid-cols-1 md:grid-cols-12 gap-4 text-xs font-medium">
             <div className="md:col-span-4 flex flex-col justify-center border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-800 pb-3 md:pb-0 md:pr-4">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Prinsip Keselamatan</span>
+              <span className="text-xs uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">Prinsip Keselamatan</span>
               <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm leading-snug mt-1 flex items-center gap-1">
                 🛡️ Rule + AI + Klinisi
               </span>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-1">
+              <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400 font-medium mt-1">
                 Rule guard-rail selalu jadi batas bawah keamanan sebelum AI atau klinisi menetapkan keputusan akhir.
               </p>
             </div>
 
             <div className="md:col-span-8 space-y-2">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Cara Tahap 2 & 3 Saling Menjaga</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] leading-relaxed">
+              <span className="text-xs uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider block">Cara Tahap 2 & 3 Saling Menjaga</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs leading-relaxed">
                 <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
                   <span className="font-extrabold text-slate-800 dark:text-slate-200">1. AI tidak bisa menurunkan urgensi</span>
                   <p className="text-slate-400 dark:text-slate-500 font-medium mt-0.5">Bila AI menilai lebih ringan dari red flag rule (mis. henti napas/syok), sistem tetap memaksa level gawat sesuai Tahap 5.</p>

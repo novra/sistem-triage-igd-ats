@@ -20,7 +20,7 @@ export function Stepper({ steps, activeStep, onStepClick, accessible = false }: 
   const progressPct = steps.length > 1 ? (activeStep / (steps.length - 1)) * 100 : 0;
 
   return (
-    <nav aria-label="Langkah triase" className="w-full">
+    <nav aria-label="Langkah triase" className="folder-stepper w-full">
       {!accessible && (
         <div className="relative mb-3 h-1.5 w-full overflow-hidden rounded-full bg-black/8 dark:bg-white/10">
           <motion.div
@@ -30,10 +30,10 @@ export function Stepper({ steps, activeStep, onStepClick, accessible = false }: 
           />
         </div>
       )}
-      <div className={accessible
+      <div className={`folder-tabs-list ${accessible
         ? "grid grid-cols-1 gap-x-3 gap-y-4 sm:grid-cols-2 xl:grid-cols-3"
         : "grid grid-cols-1 gap-x-3 gap-y-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3"
-      }>
+      }`}>
         {steps.map((step, index) => {
           const state = index === activeStep ? "active" : index < activeStep ? "done" : "upcoming";
           return (
@@ -47,6 +47,7 @@ export function Stepper({ steps, activeStep, onStepClick, accessible = false }: 
                 accessible ? "min-h-28" : "min-h-24"
               } ${onStepClick ? "cursor-pointer" : "cursor-default"}`}
             >
+              <span className="folder-tab__bridge" aria-hidden="true" />
               <span
                 className={`folder-tab__number relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-black ${
                   state === "active"

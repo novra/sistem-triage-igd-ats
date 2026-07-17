@@ -24,8 +24,8 @@ interface NarrativeWorkspaceProps {
 }
 
 const FORM_SECTIONS = [
-  "Identitas",
-  "Keluhan dan Riwayat Penyakit",
+  "Identitas dan Riwayat Penyakit",
+  "Keluhan dan Gejala Tambahan",
   "Tanda Vital dan Tingkat Kesadaran",
   "Skala Nyeri",
   "CPPT",

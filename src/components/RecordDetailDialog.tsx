@@ -29,7 +29,7 @@ const DetailItem = ({
   const shown = value === null || value === undefined || value === "" ? "-" : value;
   return (
     <div className={`min-w-0 rounded-xl border border-border/60 bg-bg/70 px-3.5 py-3 ${className}`}>
-      <dt className="break-words text-[11px] font-bold uppercase leading-relaxed tracking-wider text-text-muted">{label}</dt>
+      <dt className="break-words text-xs font-bold uppercase leading-relaxed tracking-wider text-text-muted">{label}</dt>
       <dd className="mt-1 break-words text-sm font-semibold leading-relaxed text-text [overflow-wrap:anywhere]">{shown}</dd>
     </div>
   );

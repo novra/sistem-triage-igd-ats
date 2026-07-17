@@ -15,8 +15,8 @@ import { Stepper } from "./ui/Stepper";
 import { useToast } from "./ui/Toast";
 
 const FORM_SECTIONS = [
-  { label: "Identitas GD", desc: "No RM, umur & asal datang" },
-  { label: "Keluhan dan Riwayat Penyakit", desc: "Keluhan, gejala, dan komorbid" },
+  { label: "Identitas dan Riwayat Penyakit", desc: "Data pasien, kunjungan, dan komorbid" },
+  { label: "Keluhan dan Gejala Tambahan", desc: "Keluhan utama dan gejala penyerta" },
   { label: "Tanda Vital dan Tingkat Kesadaran", desc: "Parameter fisiologis, AVPU, dan GCS" },
   { label: "Skala Nyeri", desc: "Intensitas, lokasi & radiasi" },
   { label: "CPPT", desc: "Catatan perkembangan terintegrasi" },
@@ -158,26 +158,28 @@ export default function RecordEditDialog({ record, open, onClose, aiProvider, ai
           </div>
         }
       >
-        <div className="space-y-4">
+        <div className="folder-workspace">
           <Stepper steps={FORM_SECTIONS} activeStep={activeSection} onStepClick={setActiveSection} />
 
-          <div>
-            {activeSection === 0 && (
-              <div key={editedRecord.id || editedRecord.nomorRM}>
-                <IdentitasForm data={editedRecord} onChange={updateRecord} />
+          <div className="folder-content-panel space-y-4">
+            <div>
+              {activeSection === 0 && (
+                <div key={editedRecord.id || editedRecord.nomorRM}>
+                  <IdentitasForm data={editedRecord} onChange={updateRecord} />
+                </div>
+              )}
+              {activeSection === 1 && <KeluhanAwalForm data={editedRecord} onChange={updateRecord} />}
+              {activeSection === 2 && <VitalSignForm data={editedRecord} onChange={updateRecord} />}
+              {activeSection === 3 && <NyeriForm data={editedRecord} onChange={updateRecord} />}
+              {activeSection === 4 && <SOAPFormView data={editedRecord} onChange={updateRecord} />}
+            </div>
+
+            {editedRecord.atsPrediction && (
+              <div className="border-t border-border/70 pt-4">
+                <ATSHasilPanel data={editedRecord} onSave={handleSave} isSaving={isSaving} />
               </div>
             )}
-            {activeSection === 1 && <KeluhanAwalForm data={editedRecord} onChange={updateRecord} />}
-            {activeSection === 2 && <VitalSignForm data={editedRecord} onChange={updateRecord} />}
-            {activeSection === 3 && <NyeriForm data={editedRecord} onChange={updateRecord} />}
-            {activeSection === 4 && <SOAPFormView data={editedRecord} onChange={updateRecord} />}
           </div>
-
-          {editedRecord.atsPrediction && (
-            <div className="border-t border-border/70 pt-4">
-              <ATSHasilPanel data={editedRecord} onSave={handleSave} isSaving={isSaving} />
-            </div>
-          )}
         </div>
       </Dialog>
     </>
