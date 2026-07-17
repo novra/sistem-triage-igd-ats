@@ -561,29 +561,29 @@ export default function App() {
   const spo2Display = typeof spo2Value === "number" ? `${spo2Value}%` : "Belum diisi";
 
   return (
-    <div className={`min-h-screen transition-colors ${darkMode ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}>
+    <div className={`min-h-screen transition-colors ${darkMode ? "text-slate-100" : "text-slate-900"}`}>
       
       {/* Upper header */}
-      <header className={`sticky top-0 z-40 border-b transition-all ${darkMode ? "bg-slate-900/95 border-slate-800" : "bg-white/95 border-slate-200"} backdrop-blur-md`}>
-        <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-rose-600 text-white rounded-2xl shadow-md flex items-center justify-center animate-pulse">
-              <Activity size={20} />
+      <header className={`sticky top-0 z-40 border-b transition-all ${darkMode ? "bg-slate-950/90 border-slate-800" : "bg-white/88 border-white/70 shadow-sm"} backdrop-blur-xl`}>
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-linear-to-br from-rose-500 to-red-700 text-white rounded-2xl shadow-lg shadow-rose-200/50 dark:shadow-none flex items-center justify-center">
+              <Activity size={25} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-md font-bold tracking-tight">E-Triase IGD ATS</h1>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 rounded-full select-none">
-                  BETA PROTOOTYPE
+                <h1 className="text-lg font-extrabold tracking-tight text-slate-950 dark:text-white">E-Triase IGD ATS</h1>
+                <span className="text-xs font-bold px-2.5 py-1 bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 rounded-full select-none border border-rose-100 dark:border-rose-900">
+                  BETA
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400">Clinical Decision Support System - IGD Rumah Sakit Indonesia</p>
+              <p className="hidden sm:block text-sm font-medium text-slate-500 dark:text-slate-400">Sistem Pendukung Keputusan Klinis IGD</p>
             </div>
           </div>
 
           {/* Quick Real-Time Status Rails */}
           <div className="hidden md:flex items-center gap-4">
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200/50 dark:border-slate-700/50 rounded-lg text-slate-500 dark:text-slate-400 font-bold text-[10px]">
+            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-xl text-emerald-800 dark:text-emerald-300 font-bold text-xs">
               <span className="pulse-indicator text-emerald-500"></span>
               <span>SISTEM AKTIF</span>
             </div>
@@ -601,30 +601,30 @@ export default function App() {
               </div>
             )}
             
-            <div className="flex items-center gap-1 h-[34px] bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-705">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
               <button
                 id="btn-light-theme"
                 onClick={() => setDarkMode(false)}
-                className={`p-1.5 rounded-md cursor-pointer ${!darkMode ? "bg-white text-sky-600 shadow-2xs" : "text-slate-400 hover:text-white"}`}
+                className={`p-2.5 rounded-lg cursor-pointer ${!darkMode ? "bg-white text-sky-700 shadow-sm" : "text-slate-400 hover:text-white"}`}
                 title="Mode Terang"
               >
-                <Sun size={15} />
+                <Sun size={19} />
               </button>
               <button
                 id="btn-dark-theme"
                 onClick={() => setDarkMode(true)}
-                className={`p-1.5 rounded-md cursor-pointer ${darkMode ? "bg-slate-900 text-amber-400 shadow-2xs" : "text-slate-500 hover:text-black"}`}
+                className={`p-2.5 rounded-lg cursor-pointer ${darkMode ? "bg-slate-950 text-amber-400 shadow-sm" : "text-slate-500 hover:text-black"}`}
                 title="Mode Gelap"
               >
-                <Moon size={15} />
+                <Moon size={19} />
               </button>
             </div>
 
             <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                <UserCircle2 size={15} />
+              <div className="flex items-center gap-2 px-2 py-1 text-sm text-slate-600 dark:text-slate-300 font-semibold">
+                <UserCircle2 size={20} />
                 <span className="hidden lg:inline">{user?.name}</span>
-                <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[9px] font-bold uppercase">
+                <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold uppercase">
                   {isAdmin ? "Admin" : "User"}
                 </span>
               </div>
@@ -632,17 +632,17 @@ export default function App() {
                 id="btn-change-password"
                 onClick={() => setShowChangePassword(true)}
                 title="Ganti Password"
-                className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+                className="p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100 cursor-pointer"
               >
-                <KeyRound size={14} />
+                <KeyRound size={19} />
               </button>
               <button
                 id="btn-logout"
                 onClick={() => logout()}
                 title="Keluar"
-                className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 cursor-pointer"
+                className="p-2.5 rounded-xl text-slate-500 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 cursor-pointer"
               >
-                <LogOut size={14} />
+                <LogOut size={19} />
               </button>
             </div>
           </div>
@@ -653,12 +653,12 @@ export default function App() {
         <ChangePasswordModal blocking={false} onSuccess={() => setShowChangePassword(false)} onClose={() => setShowChangePassword(false)} />
       )}
 
-      <div className="mx-auto grid max-w-[1600px] grid-cols-1 lg:grid-cols-[290px_minmax(0,1fr)]">
-        <aside className="border-b border-slate-200 bg-white/80 px-4 py-5 dark:border-slate-800 dark:bg-slate-900/70 lg:min-h-[calc(100vh-73px)] lg:border-b-0 lg:border-r">
+      <div className="mx-auto grid max-w-[1600px] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <aside className="border-b border-slate-200/80 bg-white/65 px-4 py-6 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-950/50 lg:min-h-[calc(100vh-76px)] lg:border-b-0 lg:border-r">
           <div className="lg:sticky lg:top-24">
             <div className="mb-4 px-2">
-              <p className="text-sm font-black uppercase tracking-wider text-slate-400">Menu Utama</p>
-              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Pilih satu halaman kerja.</p>
+              <p className="text-sm font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Menu Utama</p>
+              <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-400">Pilih halaman yang ingin digunakan.</p>
             </div>
             <nav className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1" aria-label="Navigasi utama aplikasi">
               {[
@@ -673,19 +673,19 @@ export default function App() {
                     key={item.id}
                     type="button"
                     onClick={() => setView(item.id)}
-                    className={`flex min-h-20 items-center gap-3 rounded-2xl border-2 p-4 text-left transition ${
+                    className={`group flex min-h-20 items-center gap-3 rounded-2xl border p-4 text-left transition-all ${
                       active
-                        ? "border-indigo-500 bg-indigo-50 text-indigo-900 shadow-sm dark:bg-indigo-950/40 dark:text-indigo-200"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-indigo-700"
+                        ? "border-indigo-200 bg-linear-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-200/50 dark:border-indigo-700 dark:shadow-none"
+                        : "border-slate-200/80 bg-white/85 text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:border-indigo-700"
                     }`}
                     aria-current={active ? "page" : undefined}
                   >
-                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${active ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300"}`}>
+                    <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${active ? "bg-white/18 text-white" : "bg-indigo-50 text-indigo-700 group-hover:bg-indigo-100 dark:bg-slate-800 dark:text-indigo-300"}`}>
                       <MenuIcon size={23} />
                     </span>
                     <span className="min-w-0">
                       <span className="block text-base font-black">{index + 1}. {item.label}</span>
-                      <span className="mt-0.5 block text-sm font-medium opacity-70">{item.description}</span>
+                      <span className={`mt-0.5 block text-sm font-medium ${active ? "text-indigo-100" : "text-slate-500 dark:text-slate-400"}`}>{item.description}</span>
                     </span>
                   </button>
                 );
@@ -705,7 +705,7 @@ export default function App() {
         </aside>
 
       {/* Main Container */}
-      <main className="min-w-0 px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-24">
+      <main className="min-w-0 px-4 sm:px-6 py-7 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-24">
         {view === "guide" ? (
           <div className="lg:col-span-12">
             <ATSGuidePage onStart={closeGuide} onSkip={closeGuide} />
@@ -753,8 +753,24 @@ export default function App() {
             </div>
           )}
 
+          <div className="relative overflow-hidden rounded-3xl border border-sky-100 bg-linear-to-r from-white via-sky-50 to-indigo-50 p-6 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/40">
+            <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-sky-200/40 blur-3xl dark:bg-indigo-800/20" />
+            <div className="relative flex items-start gap-4">
+              <div className="rounded-2xl bg-sky-600 p-3 text-white shadow-lg shadow-sky-200/60 dark:shadow-none">
+                <ClipboardList size={28} />
+              </div>
+              <div>
+                <p className="text-sm font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Ruang Kerja Klinis</p>
+                <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white">Form Utama Triase ATS</h2>
+                <p className="mt-2 max-w-3xl text-base font-medium text-slate-600 dark:text-slate-300">
+                  Lengkapi data secara bertahap, tinjau kondisi pasien, lalu jalankan analisis ATS. Setiap langkah dapat dibuka kembali sebelum hasil disimpan.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* AI Engine Selection Panel */}
-          <div className={`p-5 rounded-2xl border transition-all ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} shadow-xs`}>
+          <div className={`p-5 rounded-3xl border transition-all ${darkMode ? "bg-slate-900/90 border-slate-800" : "bg-white/90 border-slate-200"} shadow-sm backdrop-blur`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
@@ -888,7 +904,7 @@ export default function App() {
           </div>
 
           {/* Clinician Form Progress Header Stepper */}
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
             {STEPS.map((step, idx) => {
               const active = idx === activeStep;
               const passed = idx < activeStep;
@@ -897,14 +913,14 @@ export default function App() {
                   id={`btn-step-nav-${idx}`}
                   key={idx}
                   onClick={() => setActiveStep(idx)}
-                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer select-none h-full ${
+                  className={`min-h-24 p-3.5 rounded-2xl border text-left transition-all cursor-pointer select-none h-full ${
                     active
-                      ? "border-indigo-500 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 dark:border-indigo-400 ring-2 ring-indigo-300 dark:ring-indigo-900"
+                      ? "border-indigo-400 bg-linear-to-br from-indigo-50 to-violet-50 text-indigo-800 dark:from-indigo-950/60 dark:to-violet-950/40 dark:text-indigo-300 dark:border-indigo-600 shadow-md"
                       : passed
                       ? "border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400"
                       : darkMode
                       ? "border-slate-800 bg-slate-900/40 text-slate-500 hover:bg-slate-900"
-                      : "border-slate-100 bg-white text-slate-400 hover:bg-slate-50"
+                      : "border-slate-200 bg-white/90 text-slate-600 hover:border-indigo-200 hover:shadow-sm"
                   }`}
                 >
                   <div className="flex items-center gap-1">

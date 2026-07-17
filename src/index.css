@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 /* App toggles dark mode by adding/removing .dark on <html> (see App.tsx).
@@ -10,21 +10,23 @@
   --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* Elder-friendly type scale: no interface copy is rendered below 16px. */
-  --text-xs: 1rem;
-  --text-xs--line-height: 1.6;
-  --text-sm: 1.0625rem;
-  --text-sm--line-height: 1.6;
-  --text-base: 1.125rem;
-  --text-base--line-height: 1.65;
-  --text-lg: 1.25rem;
-  --text-lg--line-height: 1.55;
-  --text-xl: 1.5rem;
-  --text-xl--line-height: 1.45;
-  --text-2xl: 1.75rem;
+  /* A balanced senior-friendly scale: readable without looking oversized. */
+  --text-xs: 0.9375rem;
+  --text-xs--line-height: 1.55;
+  --text-sm: 1rem;
+  --text-sm--line-height: 1.55;
+  --text-base: 1.0625rem;
+  --text-base--line-height: 1.6;
+  --text-lg: 1.1875rem;
+  --text-lg--line-height: 1.5;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.625rem;
   --text-2xl--line-height: 1.4;
-  --text-3xl: 2rem;
+  --text-3xl: 1.875rem;
   --text-3xl--line-height: 1.35;
+  --font-weight-extrabold: 750;
+  --font-weight-black: 800;
 }
 
 html {
@@ -35,12 +37,24 @@ html {
 
 body {
   font-family: var(--font-sans);
-  font-size: 1.125rem;
-  line-height: 1.65;
-  letter-spacing: 0.01em;
-  background-color: #f8fafc;
+  font-size: 1rem;
+  line-height: 1.6;
+  letter-spacing: 0.005em;
+  background:
+    radial-gradient(circle at 8% 0%, rgb(224 242 254 / 0.65), transparent 28rem),
+    radial-gradient(circle at 95% 8%, rgb(237 233 254 / 0.55), transparent 30rem),
+    #f8fafc;
   color: #0f172a;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  min-width: 320px;
+}
+
+.dark body {
+  background:
+    radial-gradient(circle at 8% 0%, rgb(12 74 110 / 0.2), transparent 28rem),
+    radial-gradient(circle at 95% 8%, rgb(76 29 149 / 0.16), transparent 30rem),
+    #020617;
 }
 
 button,
@@ -49,6 +63,99 @@ select,
 textarea {
   font: inherit;
   line-height: 1.5;
+}
+
+input,
+select,
+textarea {
+  min-height: 3rem;
+  font-size: 1rem;
+  border-width: 1.5px;
+}
+
+textarea {
+  min-height: 7rem;
+}
+
+button:not([title]) {
+  min-height: 2.75rem;
+}
+
+button,
+input,
+select,
+textarea {
+  transition-property: color, background-color, border-color, box-shadow, transform;
+  transition-duration: 180ms;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgb(14 165 233 / 0.42);
+  outline-offset: 3px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #64748b;
+  opacity: 0.9;
+}
+
+/* Legacy micro-text utilities bypassed the Tailwind scale. Keep secondary
+   information compact, but never tiny or difficult to read. */
+[class~="text-[8px]"],
+[class~="text-[9px]"],
+[class~="text-[10px]"],
+[class~="text-[11px]"],
+[class~="text-[12px]"] {
+  font-size: 0.9375rem !important;
+  line-height: 1.5 !important;
+}
+
+[class~="text-md"] {
+  font-size: 1.1875rem;
+  line-height: 1.45;
+}
+
+/* Improve contrast for legacy secondary copy and give existing clinical
+   cards the same softer visual language as the refreshed navigation. */
+.text-slate-400 {
+  color: #64748b;
+}
+
+.shadow-xs.rounded-2xl.bg-white {
+  border-color: rgb(226 232 240 / 0.9);
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 30px -22px rgb(15 23 42 / 0.4);
+}
+
+.dark .shadow-xs.rounded-2xl.bg-white,
+.dark .shadow-sm.rounded-2xl.bg-white {
+  background-color: rgb(15 23 42 / 0.96);
+  border-color: #1e293b;
+}
+
+.dark .bg-slate-50 {
+  background-color: rgb(2 6 23 / 0.72);
+}
+
+.dark .border-slate-100,
+.dark .border-slate-200 {
+  border-color: #334155;
+}
+
+.dark .text-slate-800 { color: #f1f5f9; }
+.dark .text-slate-700 { color: #e2e8f0; }
+.dark .text-slate-600 { color: #cbd5e1; }
+.dark .text-slate-500,
+.dark .text-slate-400 { color: #94a3b8; }
+
+::selection {
+  background: rgb(186 230 253);
+  color: #0c4a6e;
 }
 
 /* Custom medical neon line accents & pulse animation */
@@ -90,15 +197,17 @@ textarea {
 
 /* Custom styles for medical print and export output, scroll bar styling */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
