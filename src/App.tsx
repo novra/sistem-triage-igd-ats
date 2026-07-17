@@ -7,23 +7,20 @@ import NyeriForm from "./components/NyeriForm";
 import SOAPFormView from "./components/SOAPFormView";
 import ATSHasilPanel from "./components/ATSHasilPanel";
 import RecordHistoryList from "./components/RecordHistoryList";
-import ATSFlowDiagram from "./components/ATSFlowDiagram";
-import ImportTriageRecords from "./components/ImportTriageRecords";
+import ATSGuidePage from "./components/ATSGuidePage";
+import NarrativeWorkspace from "./components/NarrativeWorkspace";
 import UserManagementPage from "./components/UserManagementPage";
 import ChangePasswordModal from "./components/ChangePasswordModal";
 import { useAuth } from "./context/AuthContext";
 import { apiFetch } from "./lib/api";
 import {
   Activity,
-  HeartHandshake,
   ArrowRight,
   ArrowLeft,
   Wand2,
   RefreshCw,
   Sun,
   Moon,
-  Database,
-  Search,
   CheckCircle2,
   AlertOctagon,
   Microscope,
@@ -33,7 +30,10 @@ import {
   LogOut,
   Users,
   KeyRound,
-  UserCircle2
+  UserCircle2,
+  BookOpen,
+  ClipboardList,
+  FileText
 } from "lucide-react";
 
 const INITIAL_FORM: TriageRecord = {
@@ -134,59 +134,12 @@ const INITIAL_FORM: TriageRecord = {
   }
 };
 
-const normalizeImportedRecord = (record: Partial<TriageRecord>): TriageRecord => ({
-  ...INITIAL_FORM,
-  ...record,
-  riwayatPenyakit: record.riwayatPenyakit || INITIAL_FORM.riwayatPenyakit,
-  gejalaTambahan: record.gejalaTambahan || INITIAL_FORM.gejalaTambahan,
-  vitalSign: {
-    ...INITIAL_FORM.vitalSign,
-    ...record.vitalSign,
-    gcs: {
-      ...INITIAL_FORM.vitalSign.gcs,
-      ...record.vitalSign?.gcs,
-    },
-  },
-  painScale: {
-    ...INITIAL_FORM.painScale,
-    ...record.painScale,
-  },
-  pemeriksaanFisik: {
-    kepala: {
-      ...INITIAL_FORM.pemeriksaanFisik.kepala,
-      ...record.pemeriksaanFisik?.kepala,
-    },
-    leher: {
-      ...INITIAL_FORM.pemeriksaanFisik.leher,
-      ...record.pemeriksaanFisik?.leher,
-    },
-    dada: {
-      ...INITIAL_FORM.pemeriksaanFisik.dada,
-      ...record.pemeriksaanFisik?.dada,
-    },
-    perut: {
-      ...INITIAL_FORM.pemeriksaanFisik.perut,
-      ...record.pemeriksaanFisik?.perut,
-    },
-    ekstremitasAtas: {
-      ...INITIAL_FORM.pemeriksaanFisik.ekstremitasAtas,
-      ...record.pemeriksaanFisik?.ekstremitasAtas,
-    },
-    ekstremitasBawah: {
-      ...INITIAL_FORM.pemeriksaanFisik.ekstremitasBawah,
-      ...record.pemeriksaanFisik?.ekstremitasBawah,
-    },
-  },
-  atsPrediction: undefined,
-  atsFinal: undefined,
-});
-
 const STEPS = [
   { label: "Identitas GD", desc: "No RM, umur & asal datang" },
-  { label: "Keluhan Utama", desc: "Kategori keluhan & gejala" },
-  { label: "Tanda-Tanda Vital", desc: "Parameter fisiologis / GCS" },
+  { label: "Keluhan dan Riwayat Penyakit", desc: "Keluhan, gejala, dan komorbid" },
+  { label: "Tanda Vital dan Tingkat Kesadaran", desc: "Parameter fisiologis, AVPU, dan GCS" },
   { label: "Skala Nyeri", desc: "Intensitas, lokasi & radiasi" },
-  { label: "Pemeriksaan Fisik (SOAP)", desc: "Status lokal tubuh pasien" },
+  { label: "CPPT", desc: "Catatan perkembangan terintegrasi" },
   { label: "Analisis ATS AI", desc: "Rekomendasi triase & output final" }
 ];
 
@@ -323,7 +276,9 @@ const MOCK_PRESETS = [
 export default function App() {
   const { user, logout } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [view, setView] = useState<"triage" | "users">("triage");
+  const [view, setView] = useState<"guide" | "triage" | "narrative" | "users">(() =>
+    localStorage.getItem("ats_guide_dismissed") === "true" ? "triage" : "guide"
+  );
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [form, setForm] = useState<TriageRecord>({ ...INITIAL_FORM });
@@ -351,6 +306,12 @@ export default function App() {
   const handleSetAiModel = (model: string) => {
     setAiModel(model);
     localStorage.setItem("ats_ai_model", model);
+  };
+
+  const closeGuide = () => {
+    localStorage.setItem("ats_guide_dismissed", "true");
+    setView("triage");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // User biasa cuma boleh pakai Pure Rule Based / Model Mandiri. Provider lain (mis.
@@ -659,21 +620,6 @@ export default function App() {
               </button>
             </div>
 
-            {isAdmin && (
-              <button
-                id="btn-nav-users"
-                onClick={() => setView(view === "users" ? "triage" : "users")}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition ${
-                  view === "users"
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-                }`}
-              >
-                <Users size={13} />
-                <span>Kelola User</span>
-              </button>
-            )}
-
             <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700">
               <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
                 <UserCircle2 size={15} />
@@ -707,9 +653,86 @@ export default function App() {
         <ChangePasswordModal blocking={false} onSuccess={() => setShowChangePassword(false)} onClose={() => setShowChangePassword(false)} />
       )}
 
+      <div className="mx-auto grid max-w-[1600px] grid-cols-1 lg:grid-cols-[290px_minmax(0,1fr)]">
+        <aside className="border-b border-slate-200 bg-white/80 px-4 py-5 dark:border-slate-800 dark:bg-slate-900/70 lg:min-h-[calc(100vh-73px)] lg:border-b-0 lg:border-r">
+          <div className="lg:sticky lg:top-24">
+            <div className="mb-4 px-2">
+              <p className="text-sm font-black uppercase tracking-wider text-slate-400">Menu Utama</p>
+              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Pilih satu halaman kerja.</p>
+            </div>
+            <nav className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1" aria-label="Navigasi utama aplikasi">
+              {[
+                { id: "guide" as const, label: "Guidance", description: "Panduan alur ATS", icon: BookOpen },
+                { id: "triage" as const, label: "Form Utama", description: "Input dan analisis triase AI", icon: ClipboardList },
+                { id: "narrative" as const, label: "Pengurai Narasi", description: "Pilah narasi klinis", icon: FileText },
+              ].map((item, index) => {
+                const MenuIcon = item.icon;
+                const active = view === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setView(item.id)}
+                    className={`flex min-h-20 items-center gap-3 rounded-2xl border-2 p-4 text-left transition ${
+                      active
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-900 shadow-sm dark:bg-indigo-950/40 dark:text-indigo-200"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-indigo-700"
+                    }`}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${active ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300"}`}>
+                      <MenuIcon size={23} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-base font-black">{index + 1}. {item.label}</span>
+                      <span className="mt-0.5 block text-sm font-medium opacity-70">{item.description}</span>
+                    </span>
+                  </button>
+                );
+              })}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setView("users")}
+                  className={`flex min-h-16 items-center gap-3 rounded-2xl border-2 p-4 text-left transition ${view === "users" ? "border-violet-500 bg-violet-50 text-violet-900 dark:bg-violet-950/40 dark:text-violet-200" : "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"}`}
+                >
+                  <Users size={23} />
+                  <span className="text-base font-black">Kelola Pengguna</span>
+                </button>
+              )}
+            </nav>
+          </div>
+        </aside>
+
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-24">
-        {view === "users" && isAdmin ? (
+      <main className="min-w-0 px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-24">
+        {view === "guide" ? (
+          <div className="lg:col-span-12">
+            <ATSGuidePage onStart={closeGuide} onSkip={closeGuide} />
+          </div>
+        ) : view === "narrative" ? (
+          <div className="space-y-4 lg:col-span-12">
+            {successMsg && (
+              <div className="flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">
+                <CheckCircle2 size={18} className="shrink-0" />
+                <span>{successMsg}</span>
+              </div>
+            )}
+            {errorMsg && (
+              <div className="flex items-center gap-2 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-800">
+                <AlertOctagon size={18} className="shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+            <NarrativeWorkspace
+              initialRecord={INITIAL_FORM}
+              aiProvider={aiProvider}
+              aiModel={aiModel}
+              setErrorMsg={setErrorMsg}
+              setSuccessMsg={setSuccessMsg}
+            />
+          </div>
+        ) : view === "users" && isAdmin ? (
           <div className="lg:col-span-12">
             <UserManagementPage />
           </div>
@@ -838,7 +861,6 @@ export default function App() {
             )}
           </div>
 
-          <ATSFlowDiagram />
         </div>
 
         {/* Column Left: Pre-loaded Demo presets & step forms (span 8) */}
@@ -889,7 +911,7 @@ export default function App() {
                     <span className="text-[10px] font-extrabold font-mono opacity-60">Langkah {idx + 1}</span>
                     {passed && <span className="text-[9px] text-emerald-500 font-bold">✔</span>}
                   </div>
-                  <h4 className="text-[11px] font-extrabold leading-tight mt-0.5 truncate">{step.label}</h4>
+                  <h4 className="text-sm font-extrabold leading-snug mt-1">{step.label}</h4>
                 </button>
               );
             })}
@@ -918,7 +940,7 @@ export default function App() {
           </div>
 
           {/* Stepper Footer Action Controls */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex flex-col gap-3 pt-4 border-t border-slate-200 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
             <button
               id="btn-stepper-back"
               type="button"
@@ -932,17 +954,18 @@ export default function App() {
               <span>Kembali</span>
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 id="btn-reset-current-form"
                 type="button"
                 onClick={handleResetForm}
-                className={`p-2 rounded-xl border transition cursor-pointer hover:bg-rose-50 hover:text-rose-600 ${
+                className={`flex min-h-12 items-center gap-2 rounded-xl border-2 px-4 py-2 text-sm font-bold transition cursor-pointer hover:bg-rose-50 hover:text-rose-600 ${
                   darkMode ? "border-slate-800 text-slate-400" : "border-slate-200 text-slate-500"
                 }`}
-                title="Kosongkan Form"
+                title="Kosongkan formulir dan masukkan pasien baru"
               >
-                <RotateCcw size={15} />
+                <RotateCcw size={18} />
+                <span>Data Pasien Baru / Reset</span>
               </button>
 
               {activeStep < 5 ? (
@@ -958,7 +981,7 @@ export default function App() {
               ) : null}
 
               {/* Central Trigger Action Button that invokes the AI analysis schema */}
-              <button
+              {!form.atsPrediction && <button
                 id="btn-action-ai-compute"
                 type="button"
                 disabled={isClassifying}
@@ -976,23 +999,9 @@ export default function App() {
                     <span>Analisis ATS dengan AI</span>
                   </>
                 )}
-              </button>
+              </button>}
             </div>
           </div>
-
-          {/* Dynamic Mass Batch Import (CSV/Excel/JSON formats) */}
-          <ImportTriageRecords
-            onApplyRecord={(rec) => {
-              const normalizedRecord = normalizeImportedRecord(rec);
-              setForm(normalizedRecord);
-              localStorage.setItem("ats_cached_form", JSON.stringify(normalizedRecord));
-              setActiveStep(0);
-            }}
-            setErrorMsg={setErrorMsg}
-            setSuccessMsg={setSuccessMsg}
-            aiProvider={aiProvider}
-            aiModel={aiModel}
-          />
 
           {/* Historical Logs List */}
           <RecordHistoryList
@@ -1137,6 +1146,7 @@ export default function App() {
         )}
 
       </main>
+      </div>
 
       {/* Floating Status Bar Footer */}
       <footer className={`fixed bottom-0 left-0 right-0 z-45 border-t py-2 px-4 transition-all text-center text-[10px] ${

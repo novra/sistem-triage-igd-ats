@@ -63,7 +63,7 @@ export default function ATSFlowDiagram() {
         },
         {
           id: 2,
-          title: "Keluhan & Riwayat",
+          title: "Keluhan dan Riwayat Penyakit",
           icon: FileText,
           desc: "Investigasi keluhan utama & penyerta pasien.",
           details: [
@@ -74,7 +74,7 @@ export default function ATSFlowDiagram() {
         },
         {
           id: 3,
-          title: "Tanda Vital & Saraf",
+          title: "Tanda Vital dan Tingkat Kesadaran",
           icon: Activity,
           desc: "Pemeriksaan vitalitas objektif & status kesadaran.",
           details: [
@@ -85,13 +85,13 @@ export default function ATSFlowDiagram() {
         },
         {
           id: 4,
-          title: "Skala Nyeri & SOAP",
+          title: "Skala Nyeri dan CPPT",
           icon: Sliders,
           desc: "Peta intensitas nyeri & pemeriksaan organ tubuh.",
           details: [
             "Skala intensitas nyeri (0-10) & kategori",
             "Lokasi anatomis nyeri & penjalaran",
-            "Pemeriksaan fisik objektif terfokus (SOAP)"
+            "Catatan Perkembangan Pasien Terintegrasi (CPPT)"
           ]
         }
       ]

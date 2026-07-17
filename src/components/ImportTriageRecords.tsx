@@ -103,9 +103,8 @@ export default function ImportTriageRecords({
   const handleApplyToForm = () => {
     if (!parsedRecord) return;
     onApplyRecord(parsedRecord);
-    setSuccessMsg("📋 Data hasil pilahan AI berhasil disuntikkan ke formulir triase di bawah! Silakan tinjau & klik hitung ATS.");
-    // Scroll smoothly to Form View
-    const targetElement = document.getElementById("clinical-form-container");
+    setSuccessMsg("Data hasil pilahan AI berhasil disuntikkan ke formulir hasil di halaman ini. Silakan periksa dan koreksi datanya.");
+    const targetElement = document.getElementById("narrative-injected-form");
     if (targetElement) {
       targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -251,7 +250,7 @@ export default function ImportTriageRecords({
               className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer"
             >
               <ClipboardCheck size={13} />
-              <span>Terapkan ke Formulir Utama</span>
+              <span>Tampilkan di Formulir Hasil</span>
               <ArrowRight size={12} className="ml-0.5 animate-pulse" />
             </button>
           </div>
@@ -373,7 +372,7 @@ export default function ImportTriageRecords({
             {/* Extracted Objective/Physical examination signs */}
             <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-3xs space-y-1.5">
               <div className="text-[9px] font-black text-slate-400 uppercase block">
-                🔬 Kelainan Pemeriksaan Fisik (Anomali SOAP):
+                🔬 Kelainan Pemeriksaan Fisik (CPPT):
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {[
@@ -433,7 +432,7 @@ export default function ImportTriageRecords({
               className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-widest cursor-pointer shadow-md shadow-indigo-100 dark:shadow-none"
             >
               <ClipboardCheck size={14} />
-              <span>Suntikkan Ke Formulir Pengisian Dan Lakukan Triage</span>
+              <span>Suntikkan ke Formulir di Halaman Ini</span>
               <ArrowRight size={14} className="animate-pulse" />
             </button>
           </div>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { TriageRecord, ATS_LEVEL_DETAILS } from "../types";
-import { ShieldAlert, AlertCircle, Save, Activity, FileText, CheckCircle2, UserCheck } from "lucide-react";
-import { generateIGDReportPDF } from "../utils/pdfGenerator";
+import { ShieldAlert, AlertCircle, Save, Activity, CheckCircle2, UserCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 interface ATSHasilPanelProps {
@@ -393,30 +392,8 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
         </div>
       </div>
 
-      {/* Save & Export PDF actions */}
+      {/* After analysis, saving is the only primary record action. */}
       <div className="space-y-2.5 pt-2">
-        <button
-          id="btn-export-pdf-report"
-          type="button"
-          onClick={() => {
-            const tempRecord = {
-              ...data,
-              atsFinal: {
-                ...data.atsFinal,
-                namaPetugas: namaPetugas.trim() || data.atsFinal?.namaPetugas || "Belum Ditandatangani",
-                jabatanPetugas: jabatanPetugas || data.atsFinal?.jabatanPetugas || "Perawat IGD",
-                atsLevelOverride: overrideLevel !== "" ? Number(overrideLevel) as 1 | 2 | 3 | 4 | 5 : undefined,
-                alasanOverride: reasonOverride || undefined
-              }
-            };
-            generateIGDReportPDF(tempRecord);
-          }}
-          className="w-full py-3 text-sm font-black rounded-xl text-center flex items-center justify-center gap-2 transition bg-emerald-600 hover:bg-emerald-700 text-white shadow-md cursor-pointer"
-        >
-          <FileText size={16} />
-          <span>Cetak Laporan PDF Standar IGD</span>
-        </button>
-
         <button
           id="btn-save-triage-record"
           onClick={handleTriggerSave}
@@ -424,11 +401,11 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
           className={`w-full py-3 text-sm font-black rounded-xl text-center flex items-center justify-center gap-2 transition shadow-md cursor-pointer ${
             (showOverride && !reasonOverride) || !namaPetugas.trim()
               ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-              : "bg-indigo-600 hover:bg-indigo-750 text-white"
+              : "bg-emerald-600 hover:bg-emerald-700 text-white"
           }`}
         >
           <Save size={16} />
-          <span>{isSaving ? "Menyimpan Data..." : "Simpan Berkas Triase ke Database"}</span>
+          <span>{isSaving ? "Menyimpan Data..." : "Simpan Hasil Triase ke Database"}</span>
         </button>
         {showOverride && !reasonOverride && (
           <p className="text-[10px] text-center text-rose-500 mt-1 font-semibold">

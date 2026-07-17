@@ -6,12 +6,10 @@ import {
   Download,
   Edit3,
   Eye,
-  FileText,
   FileJson,
   Search,
   Trash2,
 } from "lucide-react";
-import { generateIGDReportPDF } from "../utils/pdfGenerator";
 import { apiFetch } from "../lib/api";
 
 interface RecordHistoryListProps {
@@ -458,15 +456,6 @@ export default function RecordHistoryList({
                             title={isExpanded ? "Tutup Detail" : "Lihat Detail Database"}
                           >
                             {isExpanded ? <ChevronUp size={15} /> : <Eye size={15} />}
-                          </button>
-                          <button
-                            id={`btn-pdf-rec-${record.id}`}
-                            type="button"
-                            onClick={() => generateIGDReportPDF(record)}
-                            className="p-1 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
-                            title="Cetak PDF"
-                          >
-                            <FileText size={15} />
                           </button>
                           {(isAdmin || record.createdByUserId === currentUserId) && (
                             <button
