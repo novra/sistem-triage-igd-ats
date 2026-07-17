@@ -1,5 +1,5 @@
-import React from "react";
-import { motion, useReducedMotion } from "motion/react";
+import React, { useEffect, useRef } from "react";
+import { useReducedMotion } from "motion/react";
 import { Check } from "lucide-react";
 
 export interface StepDef {
@@ -17,59 +17,50 @@ export interface StepperProps {
 
 export function Stepper({ steps, activeStep, onStepClick, accessible = false }: StepperProps) {
   const prefersReducedMotion = useReducedMotion();
-  const progressPct = steps.length > 1 ? (activeStep / (steps.length - 1)) * 100 : 0;
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const activeTab = tabRefs.current[activeStep];
+    if (!viewport || !activeTab) return;
+
+    const targetLeft = activeTab.offsetLeft - (viewport.clientWidth - activeTab.offsetWidth) / 2;
+    viewport.scrollTo({
+      left: Math.max(0, targetLeft),
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+    });
+  }, [activeStep, prefersReducedMotion]);
 
   return (
-    <nav aria-label="Langkah triase" className="folder-stepper w-full">
-      {!accessible && (
-        <div className="relative mb-3 h-1.5 w-full overflow-hidden rounded-full bg-black/8 dark:bg-white/10">
-          <motion.div
-            className="h-full rounded-full bg-linear-to-r from-primary to-accent"
-            animate={{ width: `${progressPct}%` }}
-            transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          />
-        </div>
-      )}
-      <div className={`folder-tabs-list ${accessible
-        ? "grid grid-cols-1 gap-x-3 gap-y-4 sm:grid-cols-2 xl:grid-cols-3"
-        : "grid grid-cols-1 gap-x-3 gap-y-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3"
-      }`}>
-        {steps.map((step, index) => {
-          const state = index === activeStep ? "active" : index < activeStep ? "done" : "upcoming";
-          return (
-            <button
-              key={step.label}
-              type="button"
-              onClick={() => onStepClick?.(index)}
-              disabled={!onStepClick}
-              aria-current={state === "active" ? "step" : undefined}
-              className={`folder-tab folder-tab--${state} flex w-full items-start gap-3 px-4 pb-3.5 pt-4 text-left ${
-                accessible ? "min-h-28" : "min-h-24"
-              } ${onStepClick ? "cursor-pointer" : "cursor-default"}`}
-            >
-              <span className="folder-tab__bridge" aria-hidden="true" />
-              <span
-                className={`folder-tab__number relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-black ${
-                  state === "active"
-                    ? "bg-primary text-primary-foreground"
-                    : state === "done"
-                      ? "bg-secondary text-secondary-foreground"
-                      : "bg-black/8 text-text-muted dark:bg-white/10"
-                }`}
+    <nav aria-label="Tahapan formulir triase" className={`folder-stepper w-full ${accessible ? "folder-stepper--accessible" : ""}`}>
+      <div ref={viewportRef} className="folder-tabs-viewport">
+        <div className="folder-tabs-list" role="tablist" aria-label="Tahapan formulir">
+          {steps.map((step, index) => {
+            const state = index === activeStep ? "active" : index < activeStep ? "done" : "upcoming";
+            return (
+              <button
+                ref={(node) => { tabRefs.current[index] = node; }}
+                key={step.label}
+                type="button"
+                role="tab"
+                aria-selected={state === "active"}
+                aria-current={state === "active" ? "step" : undefined}
+                aria-label={step.desc ? `${step.label}. ${step.desc}` : step.label}
+                title={step.desc}
+                onClick={() => onStepClick?.(index)}
+                disabled={!onStepClick}
+                className={`folder-tab folder-tab--${state} ${onStepClick ? "cursor-pointer" : "cursor-default"}`}
               >
-                {state === "done" ? <Check className="size-4" /> : index + 1}
-              </span>
-              <span className="relative z-10 min-w-0 flex-1">
-                <span className="block whitespace-normal break-words text-sm font-extrabold leading-snug [overflow-wrap:anywhere]">{step.label}</span>
-                {step.desc && (
-                  <span className="mt-1 block whitespace-normal break-words text-xs font-medium leading-relaxed opacity-80 [overflow-wrap:anywhere]">
-                    {step.desc}
-                  </span>
-                )}
-              </span>
-            </button>
-          );
-        })}
+                <span className="folder-tab__bridge" aria-hidden="true" />
+                <span className="folder-tab__number" aria-hidden="true">
+                  {state === "done" ? <Check className="size-4" /> : index + 1}
+                </span>
+                <span className="folder-tab__label">{step.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );
