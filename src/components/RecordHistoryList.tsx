@@ -7,6 +7,7 @@ import {
   Edit3,
   Eye,
   FileJson,
+  Printer,
   Search,
   Trash2,
 } from "lucide-react";
@@ -34,6 +35,7 @@ export default function RecordHistoryList({
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isDownloadingLog, setIsDownloadingLog] = useState(false);
+  const [printingRecordId, setPrintingRecordId] = useState<string | null>(null);
 
   const filtered = records
     .filter((r) => {
@@ -307,6 +309,18 @@ export default function RecordHistoryList({
     }
   };
 
+  const printPdf = async (record: TriageRecord) => {
+    setPrintingRecordId(record.id || "active");
+    try {
+      const { generateIGDReportPDF } = await import("../utils/pdfGenerator");
+      generateIGDReportPDF(record);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Laporan PDF gagal dibuat.");
+    } finally {
+      setPrintingRecordId(null);
+    }
+  };
+
   return (
     <div className="space-y-6" id="records-history-section">
       <div className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-linear-to-r from-white via-indigo-50 to-sky-50 p-6 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/40">
@@ -485,6 +499,17 @@ export default function RecordHistoryList({
                           >
                             {isExpanded ? <ChevronUp size={18} /> : <Eye size={18} />}
                             <span>{isExpanded ? "Tutup" : "Lihat"}</span>
+                          </button>
+                          <button
+                            id={`btn-pdf-rec-${record.id}`}
+                            type="button"
+                            onClick={() => printPdf(record)}
+                            disabled={printingRecordId === record.id}
+                            className="flex items-center justify-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 font-bold text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300"
+                            title="Cetak laporan PDF dari rekam tersimpan"
+                          >
+                            <Printer size={18} />
+                            <span>{printingRecordId === record.id ? "Membuat..." : "PDF"}</span>
                           </button>
                           {(isAdmin || record.createdByUserId === currentUserId) && (
                             <button
@@ -682,10 +707,14 @@ export default function RecordHistoryList({
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   <button type="button" onClick={() => setExpandedId(isExpanded ? null : record.id || null)} className="flex items-center justify-center gap-2 rounded-xl bg-sky-50 px-4 py-3 font-bold text-sky-800 hover:bg-sky-100 dark:bg-sky-950/30 dark:text-sky-300">
                     {isExpanded ? <ChevronUp size={20} /> : <Eye size={20} />}
                     {isExpanded ? "Tutup Detail" : "Lihat Detail"}
+                  </button>
+                  <button type="button" onClick={() => printPdf(record)} disabled={printingRecordId === record.id} className="flex items-center justify-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-60 dark:bg-emerald-950/30 dark:text-emerald-300">
+                    <Printer size={20} />
+                    {printingRecordId === record.id ? "Membuat PDF..." : "Cetak PDF"}
                   </button>
                   {canEdit && (
                     <button type="button" onClick={() => onSelectRecord(record)} className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 font-bold text-white hover:bg-indigo-700">

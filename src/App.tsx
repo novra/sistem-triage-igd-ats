@@ -34,7 +34,8 @@ import {
   BookOpen,
   ClipboardList,
   FileText,
-  Database
+  Database,
+  Accessibility
 } from "lucide-react";
 
 const INITIAL_FORM: TriageRecord = {
@@ -143,6 +144,13 @@ const STEPS = [
   { label: "Skala Nyeri", desc: "Intensitas, lokasi & radiasi" },
   { label: "CPPT", desc: "Catatan perkembangan terintegrasi" },
   { label: "Analisis ATS AI", desc: "Rekomendasi triase & output final" }
+];
+
+const MAIN_NAV_ITEMS = [
+  { id: "guide" as const, label: "Guidance", shortLabel: "Panduan", description: "Panduan alur ATS", icon: BookOpen },
+  { id: "triage" as const, label: "Form Utama", shortLabel: "Form", description: "Input dan analisis triase AI", icon: ClipboardList },
+  { id: "narrative" as const, label: "Pengurai Narasi", shortLabel: "Narasi", description: "Pilah narasi klinis", icon: FileText },
+  { id: "records" as const, label: "Daftar Rekam", shortLabel: "Rekam", description: "Lihat dan kelola data tersimpan", icon: Database },
 ];
 
 // Clinic Presets for instant training tests or fast evaluations
@@ -290,6 +298,9 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
+  const [displayMode, setDisplayMode] = useState<"standard" | "accessible">(() =>
+    localStorage.getItem("ats_display_mode") === "accessible" ? "accessible" : "standard"
+  );
   const [aiProvider, setAiProvider] = useState<string>(() => {
     const savedProvider = localStorage.getItem("ats_ai_provider");
     if (savedProvider === "custom") return "runpod";
@@ -365,6 +376,12 @@ export default function App() {
     }
     localStorage.setItem("ats_dark_theme", String(darkMode));
   }, [darkMode]);
+
+  useEffect(() => {
+    const html = document.documentElement;
+    html.classList.toggle("accessibility-mode", displayMode === "accessible");
+    localStorage.setItem("ats_display_mode", displayMode);
+  }, [displayMode]);
 
   // Fetch all database records
   const fetchRecords = async () => {
@@ -578,13 +595,31 @@ export default function App() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-extrabold tracking-tight text-slate-950 dark:text-white">E-Triase IGD ATS</h1>
-                <span className="text-xs font-bold px-2.5 py-1 bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 rounded-full select-none border border-rose-100 dark:border-rose-900">
+                <span className="hidden text-xs font-bold px-2.5 py-1 bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 rounded-full select-none border border-rose-100 dark:border-rose-900 sm:inline-flex">
                   BETA
                 </span>
               </div>
               <p className="hidden sm:block text-sm font-medium text-slate-500 dark:text-slate-400">Sistem Pendukung Keputusan Klinis IGD</p>
             </div>
           </div>
+
+          <button
+            id="btn-display-mode"
+            type="button"
+            onClick={() => setDisplayMode((current) => current === "standard" ? "accessible" : "standard")}
+            className={`ml-auto mr-2 flex items-center gap-2 rounded-xl border px-3 py-2 font-bold shadow-sm transition sm:mr-4 ${displayMode === "accessible" ? "min-h-14" : "min-h-12"} ${
+              displayMode === "accessible"
+                ? "border-teal-400 bg-teal-700 text-white dark:border-teal-600"
+                : "border-slate-200 bg-white/90 text-slate-700 hover:border-sky-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            }`}
+            title={displayMode === "accessible" ? "Gunakan tampilan standar modern" : "Gunakan aksesibilitas lanjut"}
+            aria-label={displayMode === "accessible" ? "Nonaktifkan Aksesibilitas Lanjut" : "Aktifkan Aksesibilitas Lanjut"}
+            aria-pressed={displayMode === "accessible"}
+          >
+            <Accessibility size={21} />
+            <span className="sm:hidden">A+</span>
+            <span className="hidden sm:inline">{displayMode === "accessible" ? "Aksesibilitas Aktif" : "Tampilan Standar"}</span>
+          </button>
 
           {/* Quick Real-Time Status Rails */}
           <div className="hidden md:flex items-center gap-4">
@@ -659,19 +694,14 @@ export default function App() {
       )}
 
       <div className="mx-auto grid max-w-[1600px] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <aside className="border-b border-slate-200/80 bg-white/65 px-4 py-6 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-950/50 lg:min-h-[calc(100vh-76px)] lg:border-b-0 lg:border-r">
+        <aside className="hidden border-b border-slate-200/80 bg-white/65 px-4 py-6 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-950/50 lg:block lg:min-h-[calc(100vh-76px)] lg:border-b-0 lg:border-r">
           <div className="lg:sticky lg:top-24">
             <div className="mb-4 px-2">
               <p className="text-sm font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Menu Utama</p>
               <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-400">Pilih halaman yang ingin digunakan.</p>
             </div>
             <nav className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1" aria-label="Navigasi utama aplikasi">
-              {[
-                { id: "guide" as const, label: "Guidance", description: "Panduan alur ATS", icon: BookOpen },
-                { id: "triage" as const, label: "Form Utama", description: "Input dan analisis triase AI", icon: ClipboardList },
-                { id: "narrative" as const, label: "Pengurai Narasi", description: "Pilah narasi klinis", icon: FileText },
-                { id: "records" as const, label: "Daftar Rekam", description: "Lihat dan kelola data tersimpan", icon: Database },
-              ].map((item, index) => {
+              {MAIN_NAV_ITEMS.map((item, index) => {
                 const MenuIcon = item.icon;
                 const active = view === item.id;
                 return (
@@ -711,7 +741,7 @@ export default function App() {
         </aside>
 
       {/* Main Container */}
-      <main className="min-w-0 px-4 sm:px-6 py-7 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-24">
+      <main className="min-w-0 px-4 sm:px-6 py-5 sm:py-7 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-36 lg:pb-24">
         {view === "guide" ? (
           <div className="lg:col-span-12">
             <ATSGuidePage onStart={closeGuide} onSkip={closeGuide} />
@@ -901,7 +931,7 @@ export default function App() {
         <div className="lg:col-span-8 space-y-6" id="clinical-form-container">
           
           {/* Preset Buttons for demonstration */}
-          <div className={`p-4 rounded-2xl border ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} shadow-2xs`}>
+          <div data-density="secondary" className={`p-4 rounded-2xl border ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} shadow-2xs`}>
             <div className="flex items-center gap-1.5 mb-2.5">
               <Microscope size={14} className="text-indigo-500" />
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Kasus Simulasi Triase (Uji Coba Cepat)</span>
@@ -922,7 +952,11 @@ export default function App() {
           </div>
 
           {/* Clinician Form Progress Header Stepper */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+          <div className={`grid gap-3 ${
+            displayMode === "accessible"
+              ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
+              : "grid-cols-2 md:grid-cols-3 xl:grid-cols-6"
+          }`}>
             {STEPS.map((step, idx) => {
               const active = idx === activeStep;
               const passed = idx < activeStep;
@@ -1137,7 +1171,7 @@ export default function App() {
             </div>
 
             {/* System Guideline quick reference sheet */}
-            <div className="p-4 bg-slate-50/85 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-xl space-y-3">
+            <div data-density="secondary" className="p-4 bg-slate-50/85 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-xl space-y-3">
               <div className="inline-flex items-center gap-1.5">
                 <Clock size={13} className="text-slate-400" />
                 <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Arah Standar Triase Australasia (ATS)</span>
@@ -1175,8 +1209,46 @@ export default function App() {
       </main>
       </div>
 
+      <nav className={`fixed inset-x-3 bottom-3 z-50 grid ${isAdmin ? "grid-cols-5" : "grid-cols-4"} overflow-hidden rounded-2xl border border-white/70 bg-white/92 p-1.5 shadow-2xl shadow-slate-400/30 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/94 dark:shadow-none lg:hidden`} aria-label="Navigasi utama mobile">
+        {MAIN_NAV_ITEMS.map((item) => {
+          const MobileIcon = item.icon;
+          const active = view === item.id;
+          return (
+            <button
+              key={`mobile-${item.id}`}
+              type="button"
+              onClick={() => { setView(item.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs font-bold transition ${
+                active
+                  ? "bg-linear-to-br from-sky-700 to-teal-700 text-white shadow-md"
+                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              }`}
+              aria-current={active ? "page" : undefined}
+            >
+              <MobileIcon size={22} />
+              <span>{item.shortLabel}</span>
+            </button>
+          );
+        })}
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => { setView("users"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs font-bold transition ${
+              view === "users"
+                ? "bg-linear-to-br from-sky-700 to-teal-700 text-white shadow-md"
+                : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            }`}
+            aria-current={view === "users" ? "page" : undefined}
+          >
+            <Users size={22} />
+            <span>Akun</span>
+          </button>
+        )}
+      </nav>
+
       {/* Floating Status Bar Footer */}
-      <footer className={`fixed bottom-0 left-0 right-0 z-45 border-t py-2 px-4 transition-all text-center text-[10px] ${
+      <footer className={`fixed bottom-0 left-0 right-0 z-45 hidden border-t py-2 px-4 transition-all text-center text-[10px] lg:block ${
         darkMode ? "bg-slate-900 text-slate-400 border-slate-800" : "bg-white text-slate-500 border-slate-200"
       }`}>
         <span>© 2026 E-Triase IGD ATS. Buatan untuk Sistem Pendukung Keputusan Triage Medis Darurat.</span>

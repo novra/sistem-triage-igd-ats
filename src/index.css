@@ -7,7 +7,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   /* A balanced senior-friendly scale: readable without looking oversized. */
@@ -118,6 +118,78 @@ textarea::placeholder {
 [class~="text-md"] {
   font-size: 1.1875rem;
   line-height: 1.45;
+}
+
+/* Aksesibilitas lanjut memperbesar ritme vertikal sekaligus mengurangi
+   kepadatan informasi. Variabel skala ini menjaga seluruh layout tetap
+   proporsional, termasuk komponen yang menggunakan utilitas Tailwind. */
+.accessibility-mode {
+  --text-xs: 1.0625rem;
+  --text-xs--line-height: 1.7;
+  --text-sm: 1.125rem;
+  --text-sm--line-height: 1.7;
+  --text-base: 1.1875rem;
+  --text-base--line-height: 1.75;
+  --text-lg: 1.3125rem;
+  --text-lg--line-height: 1.65;
+  --text-xl: 1.5625rem;
+  --text-xl--line-height: 1.5;
+  --text-2xl: 1.875rem;
+  --text-2xl--line-height: 1.45;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 1.35;
+}
+
+.accessibility-mode body {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  letter-spacing: 0.01em;
+}
+
+.accessibility-mode [class~="text-[8px]"],
+.accessibility-mode [class~="text-[9px]"],
+.accessibility-mode [class~="text-[10px]"],
+.accessibility-mode [class~="text-[11px]"],
+.accessibility-mode [class~="text-[12px]"] {
+  font-size: 1.0625rem !important;
+  line-height: 1.75 !important;
+}
+
+.accessibility-mode input,
+.accessibility-mode select,
+.accessibility-mode textarea {
+  min-height: 3.5rem;
+  font-size: 1.125rem;
+  line-height: 1.65;
+}
+
+.accessibility-mode textarea {
+  min-height: 9rem;
+}
+
+.accessibility-mode button:not([title]) {
+  min-height: 3.25rem;
+}
+
+.accessibility-mode p,
+.accessibility-mode li,
+.accessibility-mode dd {
+  line-height: 1.75;
+}
+
+.accessibility-mode [data-density="secondary"] {
+  display: none !important;
+}
+
+/* Pasangan warna aksi/status dengan teks putih memakai shade lebih gelap
+   supaya teks berukuran normal tetap mencapai kontras WCAG AA. */
+.bg-sky-600.text-white { background-color: #0369a1; }
+.bg-teal-600.text-white { background-color: #0f766e; }
+.bg-emerald-600.text-white { background-color: #047857; }
+.bg-green-600.text-white { background-color: #15803d; }
+.bg-orange-500.text-white { background-color: #c2410c; }
+.bg-amber-500.text-white {
+  color: #422006;
 }
 
 /* Improve contrast for legacy secondary copy and give existing clinical

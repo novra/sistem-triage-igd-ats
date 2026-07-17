@@ -13,6 +13,12 @@ if (localStorage.getItem('ats_dark_theme') === 'true') {
   document.documentElement.classList.add('dark');
 }
 
+// Terapkan preferensi keterbacaan sebelum React dirender agar tidak terjadi
+// perubahan ukuran mendadak pada layar masuk maupun saat sesi dimuat.
+if (localStorage.getItem('ats_display_mode') === 'accessible') {
+  document.documentElement.classList.add('accessibility-mode');
+}
+
 function AuthGate() {
   const { user, status, refresh } = useAuth();
 
