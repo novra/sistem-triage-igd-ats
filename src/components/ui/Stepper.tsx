@@ -30,7 +30,10 @@ export function Stepper({ steps, activeStep, onStepClick, accessible = false }: 
           />
         </div>
       )}
-      <div className={accessible ? "grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-wrap gap-2"}>
+      <div className={accessible
+        ? "grid grid-cols-1 gap-x-3 gap-y-4 sm:grid-cols-2 xl:grid-cols-3"
+        : "grid grid-cols-1 gap-x-3 gap-y-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3"
+      }>
         {steps.map((step, index) => {
           const state = index === activeStep ? "active" : index < activeStep ? "done" : "upcoming";
           return (
@@ -40,18 +43,12 @@ export function Stepper({ steps, activeStep, onStepClick, accessible = false }: 
               onClick={() => onStepClick?.(index)}
               disabled={!onStepClick}
               aria-current={state === "active" ? "step" : undefined}
-              className={`flex min-h-12 shrink-0 items-center gap-2.5 rounded-xl border px-3.5 py-2 text-left transition-colors ${
-                accessible ? "w-full" : "w-48"
-              } ${
-                state === "active"
-                  ? "border-primary/40 bg-primary/10 text-primary"
-                  : state === "done"
-                    ? "border-secondary/30 bg-secondary/8 text-secondary"
-                    : "border-border bg-surface text-text-muted"
-              } ${onStepClick ? "cursor-pointer hover:border-primary/40" : "cursor-default"}`}
+              className={`folder-tab folder-tab--${state} flex w-full items-start gap-3 px-4 pb-3.5 pt-4 text-left ${
+                accessible ? "min-h-28" : "min-h-24"
+              } ${onStepClick ? "cursor-pointer" : "cursor-default"}`}
             >
               <span
-                className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${
+                className={`folder-tab__number relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-black ${
                   state === "active"
                     ? "bg-primary text-primary-foreground"
                     : state === "done"
@@ -61,9 +58,13 @@ export function Stepper({ steps, activeStep, onStepClick, accessible = false }: 
               >
                 {state === "done" ? <Check className="size-4" /> : index + 1}
               </span>
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-bold">{step.label}</span>
-                {step.desc && <span className="block truncate text-xs font-medium opacity-80" data-density="secondary">{step.desc}</span>}
+              <span className="relative z-10 min-w-0 flex-1">
+                <span className="block whitespace-normal break-words text-sm font-extrabold leading-snug [overflow-wrap:anywhere]">{step.label}</span>
+                {step.desc && (
+                  <span className="mt-1 block whitespace-normal break-words text-xs font-medium leading-relaxed opacity-80 [overflow-wrap:anywhere]">
+                    {step.desc}
+                  </span>
+                )}
               </span>
             </button>
           );

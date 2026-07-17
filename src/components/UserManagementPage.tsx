@@ -203,50 +203,84 @@ export default function UserManagementPage() {
         <EmptyState icon={Users} title="Belum ada user" description="Tambahkan akun pertama menggunakan tombol Tambah User di atas." />
       ) : (
         <div className="space-y-2.5">
+          <div className="hidden grid-cols-[minmax(0,1.35fr)_minmax(11.5rem,1fr)_minmax(9rem,.72fr)_auto] gap-4 px-4 text-xs font-bold uppercase tracking-wider text-text-muted md:grid">
+            <span>Pengguna</span>
+            <span>Akses &amp; Status</span>
+            <span>Login Terakhir</span>
+            <span className="text-center">Aksi</span>
+          </div>
           {users.map((u) => (
-            <div key={u.id} className="flex flex-col gap-3 rounded-xl border border-border/70 bg-surface p-3.5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1.5">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-text">{u.name}</span>
-                    <Badge tone={u.role === "admin" ? "primary" : "neutral"}>{u.role === "admin" ? "Admin" : "User"}</Badge>
-                    {u.is_active ? (
-                      <Badge tone="secondary">Aktif</Badge>
-                    ) : (
-                      <Badge tone="neutral">Nonaktif</Badge>
-                    )}
-                    {u.must_change_password && u.is_active && <Badge tone="warning">Wajib ganti password</Badge>}
-                  </div>
-                  <p className="truncate text-xs text-text-muted">{u.email}</p>
-                </div>
-                <div className="text-xs text-text-muted">
-                  <span className="block font-bold uppercase tracking-wider">Login Terakhir</span>
-                  <span>{u.last_login_at ? new Date(u.last_login_at).toLocaleString("id-ID") : "-"}</span>
+            <div
+              key={u.id}
+              className="grid grid-cols-1 gap-3 rounded-xl border border-border/70 bg-surface p-4 transition-colors hover:border-primary/25 md:grid-cols-[minmax(0,1.35fr)_minmax(11.5rem,1fr)_minmax(9rem,.72fr)_auto] md:items-center md:gap-4"
+            >
+              <div className="min-w-0">
+                <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-text-muted md:hidden">Pengguna</span>
+                <p className="font-semibold leading-snug text-text">{u.name}</p>
+                <p className="mt-1 break-words text-sm leading-relaxed text-text-muted [overflow-wrap:anywhere]">{u.email}</p>
+              </div>
+
+              <div className="min-w-0">
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-muted md:hidden">Akses &amp; Status</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={u.role === "admin" ? "primary" : "neutral"}>{u.role === "admin" ? "Admin" : "User"}</Badge>
+                  {u.is_active ? (
+                    <Badge tone="secondary">Aktif</Badge>
+                  ) : (
+                    <Badge tone="neutral">Nonaktif</Badge>
+                  )}
+                  {u.must_change_password && u.is_active && <Badge tone="warning">Wajib ganti password</Badge>}
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="min-w-0 text-sm text-text-muted">
+                <span className="mb-1 block text-xs font-bold uppercase tracking-wider md:hidden">Login Terakhir</span>
+                <span className="leading-relaxed">{u.last_login_at ? new Date(u.last_login_at).toLocaleString("id-ID") : "-"}</span>
+              </div>
+
+              <div className="flex items-center gap-2 border-t border-border/60 pt-3 md:justify-end md:border-0 md:pt-0">
+                <span className="mr-auto text-xs font-bold uppercase tracking-wider text-text-muted md:hidden">Aksi</span>
                 <Tooltip content="Reset Password">
-                  <button onClick={() => handleResetPassword(u.id, u.name)} className="rounded-lg bg-black/5 p-2 text-text-muted transition hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/15">
-                    <KeyRound size={15} />
+                  <button
+                    type="button"
+                    aria-label={`Reset password ${u.name}`}
+                    onClick={() => handleResetPassword(u.id, u.name)}
+                    className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-muted transition hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-white/8 dark:hover:bg-white/15"
+                  >
+                    <KeyRound size={17} />
                   </button>
                 </Tooltip>
                 {u.is_active ? (
                   <Tooltip content="Nonaktifkan">
-                    <button onClick={() => handleDeactivate(u.id)} className="rounded-lg bg-danger/10 p-2 text-danger transition hover:bg-danger/20">
-                      <ShieldOff size={15} />
+                    <button
+                      type="button"
+                      aria-label={`Nonaktifkan ${u.name}`}
+                      onClick={() => handleDeactivate(u.id)}
+                      className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-danger/10 text-danger transition hover:bg-danger/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+                    >
+                      <ShieldOff size={17} />
                     </button>
                   </Tooltip>
                 ) : (
                   <Tooltip content="Aktifkan Kembali">
-                    <button onClick={() => handleReactivate(u.id)} className="rounded-lg bg-secondary/10 p-2 text-secondary transition hover:bg-secondary/20">
-                      <ShieldCheck size={15} />
+                    <button
+                      type="button"
+                      aria-label={`Aktifkan kembali ${u.name}`}
+                      onClick={() => handleReactivate(u.id)}
+                      className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary transition hover:bg-secondary/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+                    >
+                      <ShieldCheck size={17} />
                     </button>
                   </Tooltip>
                 )}
                 <Tooltip content="Hapus Permanen">
-                  <button onClick={() => handleDelete(u.id, u.name)} className="rounded-lg bg-black/5 p-2 text-text-muted transition hover:bg-danger/10 hover:text-danger dark:bg-white/8">
-                    <Trash2 size={15} />
+                  <button
+                    type="button"
+                    aria-label={`Hapus permanen ${u.name}`}
+                    onClick={() => handleDelete(u.id, u.name)}
+                    className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-black/5 text-text-muted transition hover:bg-danger/10 hover:text-danger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger dark:bg-white/8"
+                  >
+                    <Trash2 size={17} />
                   </button>
                 </Tooltip>
               </div>
