@@ -1,11 +1,31 @@
 import React, { useEffect, useState } from "react";
 import { TriageRecord, GcsScore, VitalSign } from "../types";
-import { Gauge, CheckCircle, BrainCircuit, Heart, Info, Wind } from "lucide-react";
+import { BrainCircuit, Heart, Info, Wind } from "lucide-react";
+import { Card } from "./ui/Card";
+import { Input, SelectField } from "./ui/Input";
+import { Chip } from "./ui/Badge";
 
 interface VitalSignFormProps {
   data: TriageRecord;
   onChange: (fields: Partial<TriageRecord>) => void;
 }
+
+const AVPU_OPTIONS = [
+  { value: "Alert", label: "Alert (A)", desc: "Sadar penuh & lingkungan", tone: "text-secondary border-secondary/30 bg-secondary/10" },
+  { value: "Verbal", label: "Verbal (V)", desc: "Merespon terhadap suara", tone: "text-primary border-primary/30 bg-primary/10" },
+  { value: "Pain", label: "Pain (P)", desc: "Hanya merespon nyeri fisik", tone: "text-amber-700 dark:text-amber-400 border-warning/40 bg-warning/10 animate-pulse" },
+  { value: "Unresponsive", label: "Unresponsive (U)", desc: "Tidak merespon sama sekali", tone: "text-danger border-danger/30 bg-danger/10 animate-pulse" },
+] as const;
+
+const RESPIRATORY_FLAGS: Array<{ id: keyof VitalSign; label: string }> = [
+  { id: "ototBantuNapas", label: "Penggunaan Otot Bantu Napas" },
+  { id: "retraksi", label: "Retraksi Dinding Dada" },
+  { id: "stridor", label: "Stridor (Sumbatan Atas)" },
+  { id: "wheezing", label: "Wheezing (Penyempitan Bronkus)" },
+  { id: "apnea", label: "Apnea / Henti Napas Sementara" },
+  { id: "takipnea", label: "Takipnea (Napas Sangat Cepat)" },
+  { id: "bradipnea", label: "Bradipnea (Napas Sangat Lambat)" },
+];
 
 export default function VitalSignForm({ data, onChange }: VitalSignFormProps) {
   // Ensure vitalSign is initialized
@@ -91,23 +111,23 @@ export default function VitalSignForm({ data, onChange }: VitalSignFormProps) {
   const warnings = getFisiologisWarning();
 
   return (
-    <div className="space-y-6 animate-fade-in" id="vitals-form-section">
-      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs">
-        <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-          <div className="p-1.5 bg-rose-50 text-rose-600 rounded-lg">
+    <div className="space-y-4" id="vitals-form-section">
+      <Card padding="md">
+        <div className="mb-4 flex items-center gap-2.5 border-b border-border/70 pb-3">
+          <div className="rounded-lg bg-danger/10 p-1.5 text-danger">
             <Heart size={18} />
           </div>
-          <h2 className="text-md font-semibold text-slate-800">1. Vital Signs (Tanda-Tanda Vital)</h2>
+          <h2 className="text-sm font-bold text-text">1. Vital Signs (Tanda-Tanda Vital)</h2>
         </div>
 
         {/* Real-time Triage Alerts */}
         {warnings.length > 0 && (
-          <div className="mb-4 bg-rose-50 border border-rose-200 p-4 rounded-xl space-y-1.5">
-            <div className="flex items-center gap-2 text-rose-700 font-semibold text-xs">
+          <div className="mb-4 space-y-1.5 rounded-xl border border-danger/30 bg-danger/5 p-4">
+            <div className="flex items-center gap-2 text-xs font-bold text-danger">
               <Info size={14} className="animate-bounce" />
               <span>PERINGATAN KLINIS (RULE-BASED RED FLAGS):</span>
             </div>
-            <ul className="list-disc list-inside text-[11px] text-rose-600 space-y-1 font-medium">
+            <ul className="list-inside list-disc space-y-1 text-xs font-medium text-danger">
               {warnings.map((msg, i) => (
                 <li key={i}>{msg}</li>
               ))}
@@ -115,270 +135,154 @@ export default function VitalSignForm({ data, onChange }: VitalSignFormProps) {
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-          <div>
-            <label className="block text-[11px] font-medium text-slate-500 mb-1">
-              Sistolik (mmHg)
-            </label>
-            <input
-              id="input-sys-bp"
-              type="number"
-              placeholder="120"
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-rose-500 transition"
-              value={vitals.tekananDarahSistolik || ""}
-              onChange={(e) => updateVitalField("tekananDarahSistolik", Number(e.target.value))}
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-medium text-slate-500 mb-1">
-              Diastolik (mmHg)
-            </label>
-            <input
-              id="input-dia-bp"
-              type="number"
-              placeholder="80"
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-rose-500 transition"
-              value={vitals.tekananDarahDiastolik || ""}
-              onChange={(e) => updateVitalField("tekananDarahDiastolik", Number(e.target.value))}
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-medium text-slate-500 mb-1">
-              Heart Rate (kali/mnt)
-            </label>
-            <input
-              id="input-heart-rate"
-              type="number"
-              placeholder="80"
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-rose-500 transition"
-              value={vitals.heartRate || ""}
-              onChange={(e) => updateVitalField("heartRate", Number(e.target.value))}
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-medium text-slate-500 mb-1">
-              Resp Rate (kali/mnt)
-            </label>
-            <input
-              id="input-resp-rate"
-              type="number"
-              placeholder="18"
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-rose-500 transition"
-              value={vitals.respiratoryRate || ""}
-              onChange={(e) => updateVitalField("respiratoryRate", Number(e.target.value))}
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-medium text-slate-500 mb-1">
-              Suhu Tubuh (°C)
-            </label>
-            <input
-              id="input-temp"
-              type="number"
-              step="0.1"
-              placeholder="36.5"
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-rose-500 transition"
-              value={vitals.suhuTubuh || ""}
-              onChange={(e) => updateVitalField("suhuTubuh", Number(e.target.value))}
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-medium text-slate-500 mb-1">
-              Saturasi O2 (%)
-            </label>
-            <input
-              id="input-spo2"
-              type="number"
-              max="100"
-              placeholder="98"
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-rose-500 transition"
-              value={vitals.saturasiOksigen || ""}
-              onChange={(e) => updateVitalField("saturasiOksigen", Number(e.target.value))}
-            />
-          </div>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
+          <Input
+            id="input-sys-bp"
+            type="number"
+            label="Sistolik (mmHg)"
+            value={vitals.tekananDarahSistolik || ""}
+            onChange={(e) => updateVitalField("tekananDarahSistolik", Number(e.target.value))}
+          />
+          <Input
+            id="input-dia-bp"
+            type="number"
+            label="Diastolik (mmHg)"
+            value={vitals.tekananDarahDiastolik || ""}
+            onChange={(e) => updateVitalField("tekananDarahDiastolik", Number(e.target.value))}
+          />
+          <Input
+            id="input-heart-rate"
+            type="number"
+            label="Heart Rate (kali/mnt)"
+            value={vitals.heartRate || ""}
+            onChange={(e) => updateVitalField("heartRate", Number(e.target.value))}
+          />
+          <Input
+            id="input-resp-rate"
+            type="number"
+            label="Resp Rate (kali/mnt)"
+            value={vitals.respiratoryRate || ""}
+            onChange={(e) => updateVitalField("respiratoryRate", Number(e.target.value))}
+          />
+          <Input
+            id="input-temp"
+            type="number"
+            step="0.1"
+            label="Suhu Tubuh (°C)"
+            value={vitals.suhuTubuh || ""}
+            onChange={(e) => updateVitalField("suhuTubuh", Number(e.target.value))}
+          />
+          <Input
+            id="input-spo2"
+            type="number"
+            max="100"
+            label="Saturasi O2 (%)"
+            value={vitals.saturasiOksigen || ""}
+            onChange={(e) => updateVitalField("saturasiOksigen", Number(e.target.value))}
+          />
         </div>
-      </div>
+      </Card>
 
-      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs">
-        <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-          <div className="p-1.5 bg-violet-50 text-violet-600 rounded-lg">
+      <Card padding="md">
+        <div className="mb-4 flex items-center gap-2.5 border-b border-border/70 pb-3">
+          <div className="rounded-lg bg-accent/10 p-1.5 text-accent">
             <BrainCircuit size={18} />
           </div>
-          <h2 className="text-md font-semibold text-slate-800">2. Status Neurologis (GCS & Kesadaran AVPU)</h2>
+          <h2 className="text-sm font-bold text-text">2. Status Neurologis (GCS & Kesadaran AVPU)</h2>
         </div>
 
         {/* AVPU Scale Selection */}
-        <div className="mb-6 p-4 bg-slate-50/50 border border-slate-200/60 rounded-2xl space-y-3">
-          <div>
-            <span className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Skala Status Kesadaran AVPU
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-              {[
-                { value: "Alert", label: "Alert (A)", desc: "Sadar penuh & lingkungan", color: "border-emerald-200 bg-emerald-50/80 text-emerald-800" },
-                { value: "Verbal", label: "Verbal (V)", desc: "Merespon terhadap suara", color: "border-sky-200 bg-sky-50/80 text-sky-800" },
-                { value: "Pain", label: "Pain (P)", desc: "Hanya merespon nyeri fisik", color: "border-amber-250 bg-amber-50/80 text-amber-800 animate-pulse" },
-                { value: "Unresponsive", label: "Unresponsive (U)", desc: "Tidak merespon sama sekali", color: "border-rose-200 bg-rose-50/80 text-rose-800 animate-pulse" }
-              ].map((item) => {
-                const active = (vitals.avpu || "Alert") === item.value;
-                return (
-                  <button
-                    key={item.value}
-                    type="button"
-                    id={`btn-avpu-${item.value.toLowerCase()}`}
-                    onClick={() => updateVitalField("avpu", item.value)}
-                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition select-none flex flex-col justify-between h-full min-h-[64px] ${
-                      active
-                        ? `${item.color} ring-2 ring-indigo-400 font-bold border-indigo-400`
-                        : "border-slate-100 bg-white hover:bg-slate-50 text-slate-600"
-                    }`}
-                  >
-                    <span className="text-xs font-bold flex items-center justify-between w-full">
-                      <span>{item.label}</span>
-                      {active && (item.value === "Pain" || item.value === "Unresponsive") && (
-                        <span className={`pulse-indicator ${item.value === "Pain" ? "text-amber-500" : "text-rose-600"}`} />
-                      )}
-                    </span>
-                    <span className="text-[10px] opacity-85 mt-0.5 leading-tight">{item.desc}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">
-              Eye Response (E)
-            </label>
-            <select
-              id="select-gcs-eye"
-              value={gcsEye}
-              onChange={(e) => updateGcsField("eye", Number(e.target.value))}
-              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-violet-500"
-            >
-              <option value={4}>4 = Spontan</option>
-              <option value={3}>3 = Terhadap suara</option>
-              <option value={2}>2 = Terhadap nyeri</option>
-              <option value={1}>1 = Tidak ada respon</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">
-              Verbal Response (V)
-            </label>
-            <select
-              id="select-gcs-verbal"
-              value={gcsVerbal}
-              onChange={(e) => updateGcsField("verbal", Number(e.target.value))}
-              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-violet-500"
-            >
-              <option value={5}>5 = Orientasi baik</option>
-              <option value={4}>4 = Bingung (Confused)</option>
-              <option value={3}>3 = Kata-kata tidak sesuai</option>
-              <option value={2}>2 = Suara tidak terkonstruksi (Incomprehensible)</option>
-              <option value={1}>1 = Tidak ada suara</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">
-              Motor Response (M)
-            </label>
-            <select
-              id="select-gcs-motor"
-              value={gcsMotor}
-              onChange={(e) => updateGcsField("motor", Number(e.target.value))}
-              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-violet-500"
-            >
-              <option value={6}>6 = Mengikuti perintah</option>
-              <option value={5}>5 = Melokalisir nyeri</option>
-              <option value={4}>4 = Withdraw (Menarik dari nyeri)</option>
-              <option value={3}>3 = Fleksi abnormal (Dekortikasi)</option>
-              <option value={2}>2 = Ekstensi abnormal (Deserebrasi)</option>
-              <option value={1}>1 = Tidak ada gerakan</option>
-            </select>
-          </div>
-
-          <div className="bg-violet-50/50 p-4 rounded-xl border border-violet-100 flex flex-col items-center justify-center min-h-[58px]">
-            <span className="text-[10px] uppercase font-bold text-violet-600 tracking-wider">Total GCS Score</span>
-            <span className={`text-2xl font-black ${totalGcs <= 8 ? 'text-rose-600 animate-pulse' : 'text-violet-700'}`}>
-              E{gcsEye} V{gcsVerbal} M{gcsMotor} = {totalGcs}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs">
-        <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-          <div className="p-1.5 bg-sky-50 text-sky-600 rounded-lg">
-            <Wind size={18} />
-          </div>
-          <h2 className="text-md font-semibold text-slate-800">3. Pola & Tambahan Pernapasan</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-4 border-b border-slate-100 mb-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">
-              Pola Pernapasan
-            </label>
-            <select
-              id="select-pola-napas"
-              value={vitals.polaNapas}
-              onChange={(e) => updateVitalField("polaNapas", e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
-            >
-              <option value="reguler">Reguler / Teratur</option>
-              <option value="irreguler">Irreguler / Tidak Teratur</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <span className="block text-xs font-medium text-slate-500 mb-3">
-            Otot Bantu & Kejadian Tambahan Atas Pernapasan:
-          </span>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {[
-              { id: "ototBantuNapas", label: "Penggunaan Otot Bantu Napas" },
-              { id: "retraksi", label: "Retraksi Dinding Dada" },
-              { id: "stridor", label: "Stridor (Sumbatan Atas)" },
-              { id: "wheezing", label: "Wheezing (Penyempitan Bronkus)" },
-              { id: "apnea", label: "Apnea / Henti Napas Sementara" },
-              { id: "takipnea", label: "Takipnea (Napas Sangat Cepat)" },
-              { id: "bradipnea", label: "Bradipnea (Napas Sangat Lambat)" },
-            ].map((item) => {
-              const isChecked = !!(vitals as any)[item.id];
+        <div className="mb-6 space-y-3 rounded-2xl border border-border/70 bg-bg p-4">
+          <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text">Skala Status Kesadaran AVPU</span>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+            {AVPU_OPTIONS.map((item) => {
+              const active = (vitals.avpu || "Alert") === item.value;
               return (
-                <label
-                  key={item.id}
-                  id={`label-napas-${item.id}`}
-                  className={`flex items-start gap-2 p-2.5 rounded-xl border text-left cursor-pointer transition select-none ${
-                    isChecked
-                      ? "border-sky-500 bg-sky-50/50 text-sky-800"
-                      : "border-slate-100 hover:bg-slate-50 text-slate-600"
+                <button
+                  key={item.value}
+                  type="button"
+                  id={`btn-avpu-${item.value.toLowerCase()}`}
+                  onClick={() => updateVitalField("avpu", item.value)}
+                  className={`flex min-h-16 flex-col justify-between rounded-xl border p-2.5 text-left transition ${
+                    active ? `${item.tone} ring-2 ring-primary/40 font-bold` : "border-border bg-surface text-text-muted hover:bg-bg"
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={(e) => updateVitalField(item.id as keyof VitalSign, e.target.checked)}
-                    className="mt-0.5 accent-sky-500"
-                  />
-                  <span className="text-[11px] font-medium leading-tight">{item.label}</span>
-                </label>
+                  <span className="flex w-full items-center justify-between text-xs font-bold">
+                    <span>{item.label}</span>
+                    {active && (item.value === "Pain" || item.value === "Unresponsive") && (
+                      <span className={`pulse-indicator ${item.value === "Pain" ? "text-amber-500" : "text-danger"}`} />
+                    )}
+                  </span>
+                  <span className="mt-0.5 text-xs leading-tight opacity-85">{item.desc}</span>
+                </button>
               );
             })}
           </div>
         </div>
-      </div>
+
+        <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-4">
+          <SelectField id="select-gcs-eye" label="Eye Response (E)" value={gcsEye} onChange={(e) => updateGcsField("eye", Number(e.target.value))}>
+            <option value={4}>4 = Spontan</option>
+            <option value={3}>3 = Terhadap suara</option>
+            <option value={2}>2 = Terhadap nyeri</option>
+            <option value={1}>1 = Tidak ada respon</option>
+          </SelectField>
+
+          <SelectField id="select-gcs-verbal" label="Verbal Response (V)" value={gcsVerbal} onChange={(e) => updateGcsField("verbal", Number(e.target.value))}>
+            <option value={5}>5 = Orientasi baik</option>
+            <option value={4}>4 = Bingung (Confused)</option>
+            <option value={3}>3 = Kata-kata tidak sesuai</option>
+            <option value={2}>2 = Suara tidak terkonstruksi (Incomprehensible)</option>
+            <option value={1}>1 = Tidak ada suara</option>
+          </SelectField>
+
+          <SelectField id="select-gcs-motor" label="Motor Response (M)" value={gcsMotor} onChange={(e) => updateGcsField("motor", Number(e.target.value))}>
+            <option value={6}>6 = Mengikuti perintah</option>
+            <option value={5}>5 = Melokalisir nyeri</option>
+            <option value={4}>4 = Withdraw (Menarik dari nyeri)</option>
+            <option value={3}>3 = Fleksi abnormal (Dekortikasi)</option>
+            <option value={2}>2 = Ekstensi abnormal (Deserebrasi)</option>
+            <option value={1}>1 = Tidak ada gerakan</option>
+          </SelectField>
+
+          <div className="flex min-h-14.5 flex-col items-center justify-center rounded-xl border border-accent/20 bg-accent/5 p-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-accent">Total GCS Score</span>
+            <span className={`text-2xl font-black ${totalGcs <= 8 ? "animate-pulse text-danger" : "text-accent"}`}>
+              E{gcsEye} V{gcsVerbal} M{gcsMotor} = {totalGcs}
+            </span>
+          </div>
+        </div>
+      </Card>
+
+      <Card padding="md">
+        <div className="mb-4 flex items-center gap-2.5 border-b border-border/70 pb-3">
+          <div className="rounded-lg bg-primary/10 p-1.5 text-primary">
+            <Wind size={18} />
+          </div>
+          <h2 className="text-sm font-bold text-text">3. Pola & Tambahan Pernapasan</h2>
+        </div>
+
+        <div className="mb-4 grid grid-cols-1 gap-4 border-b border-border/70 pb-4 md:grid-cols-3">
+          <SelectField id="select-pola-napas" label="Pola Pernapasan" value={vitals.polaNapas} onChange={(e) => updateVitalField("polaNapas", e.target.value)}>
+            <option value="reguler">Reguler / Teratur</option>
+            <option value="irreguler">Irreguler / Tidak Teratur</option>
+          </SelectField>
+        </div>
+
+        <span className="mb-3 block text-xs font-bold text-text-muted">Otot Bantu & Kejadian Tambahan Atas Pernapasan:</span>
+        <div className="flex flex-wrap gap-1.5">
+          {RESPIRATORY_FLAGS.map((item) => (
+            <Chip
+              key={item.id}
+              id={`label-napas-${item.id}`}
+              selected={Boolean((vitals as any)[item.id])}
+              onClick={() => updateVitalField(item.id, !(vitals as any)[item.id])}
+            >
+              {item.label}
+            </Chip>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

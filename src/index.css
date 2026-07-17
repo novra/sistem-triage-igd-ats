@@ -28,6 +28,69 @@
   --text-3xl--line-height: 1.35;
   --font-weight-extrabold: 750;
   --font-weight-black: 800;
+
+  /* Softer, more consistent corner radius across the whole app (16-20px
+     range) — overriding Tailwind's own radius scale means every existing
+     rounded-xl/rounded-2xl usage picks this up automatically. */
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+
+  /* Generic semantic UI palette (brand/status). Deliberately a SEPARATE
+     namespace from --color-ats-*: these are for chrome/actions, not for
+     clinical severity. Never alias an ATS level to one of these. */
+  --color-bg: #fafbfc;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-primary: #2563eb;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #10b981;
+  --color-secondary-foreground: #ffffff;
+  --color-accent: #8b5cf6;
+  --color-accent-foreground: #ffffff;
+  --color-warning: #f59e0b;
+  --color-warning-foreground: #451a03;
+  --color-danger: #ef4444;
+  --color-danger-foreground: #ffffff;
+  --color-text: #1f2937;
+  --color-text-muted: #64748b;
+
+  /* Clinical ATS severity palette — fixed convention (1=merah..5=netral).
+     Kept separate from the palette above on purpose: hue here encodes
+     medical meaning and must never drift to match a generic brand token. */
+  --color-ats-1: #dc2626;
+  --color-ats-1-foreground: #ffffff;
+  --color-ats-2: #f97316;
+  --color-ats-2-foreground: #ffffff;
+  --color-ats-3: #16a34a;
+  --color-ats-3-foreground: #ffffff;
+  --color-ats-4: #2563eb;
+  --color-ats-4-foreground: #ffffff;
+  --color-ats-5: #ffffff;
+  --color-ats-5-foreground: #111827;
+}
+
+/* Dark-mode values for the generic semantic palette only. ATS tokens are
+   intentionally left as-is except ats-5 (see below) — the clinical hues
+   already carry enough contrast on dark surfaces as accent colors. */
+.dark {
+  --color-bg: #020617;
+  --color-surface: #0f172a;
+  --color-border: #1e293b;
+  --color-primary: #3b82f6;
+  --color-secondary: #34d399;
+  --color-accent: #a78bfa;
+  --color-warning: #fbbf24;
+  --color-warning-foreground: #451a03;
+  --color-danger: #f87171;
+  --color-text: #f1f5f9;
+  --color-text-muted: #94a3b8;
+
+  /* ATS 5 (paling tidak gawat) berpindah dari putih solid ke slate gelap
+     dengan border terang di dark mode, supaya menyatu dengan tema gelap
+     tapi tetap jelas berbeda dari kartu ATS 1-4 yang berwarna. */
+  --color-ats-5: #1e293b;
+  --color-ats-5-foreground: #f1f5f9;
 }
 
 html {
@@ -105,22 +168,6 @@ textarea::placeholder {
   opacity: 0.9;
 }
 
-/* Legacy micro-text utilities bypassed the Tailwind scale. Keep secondary
-   information compact, but never tiny or difficult to read. */
-[class~="text-[8px]"],
-[class~="text-[9px]"],
-[class~="text-[10px]"],
-[class~="text-[11px]"],
-[class~="text-[12px]"] {
-  font-size: 0.8125rem !important;
-  line-height: 1.45 !important;
-}
-
-[class~="text-md"] {
-  font-size: 1.125rem;
-  line-height: 1.45;
-}
-
 .standard-mode body {
   background:
     radial-gradient(circle at 5% -5%, rgb(125 211 252 / 0.32), transparent 25rem),
@@ -133,12 +180,6 @@ textarea::placeholder {
     radial-gradient(circle at 5% -5%, rgb(14 116 144 / 0.2), transparent 25rem),
     radial-gradient(circle at 100% 0%, rgb(109 40 217 / 0.16), transparent 28rem),
     #020617;
-}
-
-.standard-mode .shadow-xs.rounded-2xl.bg-white {
-  background: linear-gradient(145deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.94));
-  border-color: rgb(226 232 240 / 0.85);
-  box-shadow: 0 18px 45px -34px rgb(30 41 59 / 0.65);
 }
 
 .standard-stepper {
@@ -203,15 +244,6 @@ textarea::placeholder {
   letter-spacing: 0.01em;
 }
 
-.accessibility-mode [class~="text-[8px]"],
-.accessibility-mode [class~="text-[9px]"],
-.accessibility-mode [class~="text-[10px]"],
-.accessibility-mode [class~="text-[11px]"],
-.accessibility-mode [class~="text-[12px]"] {
-  font-size: 1.0625rem !important;
-  line-height: 1.75 !important;
-}
-
 .accessibility-mode input,
 .accessibility-mode select,
 .accessibility-mode textarea {
@@ -238,53 +270,52 @@ textarea::placeholder {
   display: none !important;
 }
 
-/* Pasangan warna aksi/status dengan teks putih memakai shade lebih gelap
-   supaya teks berukuran normal tetap mencapai kontras WCAG AA. */
-.bg-sky-600.text-white { background-color: #0369a1; }
-.bg-teal-600.text-white { background-color: #0f766e; }
-.bg-emerald-600.text-white { background-color: #047857; }
-.bg-green-600.text-white { background-color: #15803d; }
-.bg-orange-500.text-white { background-color: #c2410c; }
-.bg-amber-500.text-white {
-  color: #422006;
-}
-
-/* Improve contrast for legacy secondary copy and give existing clinical
-   cards the same softer visual language as the refreshed navigation. */
-.text-slate-400 {
-  color: #64748b;
-}
-
-.shadow-xs.rounded-2xl.bg-white {
-  border-color: rgb(226 232 240 / 0.9);
-  border-radius: 1.5rem;
-  box-shadow: 0 10px 30px -22px rgb(15 23 42 / 0.4);
-}
-
-.dark .shadow-xs.rounded-2xl.bg-white,
-.dark .shadow-sm.rounded-2xl.bg-white {
-  background-color: rgb(15 23 42 / 0.96);
-  border-color: #1e293b;
-}
-
-.dark .bg-slate-50 {
-  background-color: rgb(2 6 23 / 0.72);
-}
-
-.dark .border-slate-100,
-.dark .border-slate-200 {
-  border-color: #334155;
-}
-
-.dark .text-slate-800 { color: #f1f5f9; }
-.dark .text-slate-700 { color: #e2e8f0; }
-.dark .text-slate-600 { color: #cbd5e1; }
-.dark .text-slate-500,
-.dark .text-slate-400 { color: #94a3b8; }
-
 ::selection {
   background: rgb(186 230 253);
   color: #0c4a6e;
+}
+
+/* Lightweight open/close pop for Radix popover-family content (Tooltip,
+   Popover, DropdownMenu, Select) — avoids pulling in a Tailwind animate
+   plugin just for this. Exit animation is intentionally skipped (Radix
+   unmounts instantly on close by default); see ui/Dialog.tsx for the
+   forceMount + AnimatePresence pattern used where an exit animation matters. */
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.96) translateY(2px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-pop[data-state="open"],
+.animate-pop[data-state="delayed-open"],
+.animate-pop[data-state="instant-open"] {
+  animation: pop-in 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop {
+    animation: none !important;
+  }
+}
+
+/* Smooth collapse/expand for ui/Accordion.tsx, driven by Radix's own
+   --radix-accordion-content-height custom property (no JS measuring needed). */
+@keyframes accordion-slide-down {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-accordion-content-height); opacity: 1; }
+}
+@keyframes accordion-slide-up {
+  from { height: var(--radix-accordion-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+.accordion-content[data-state="open"] {
+  animation: accordion-slide-down 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.accordion-content[data-state="closed"] {
+  animation: accordion-slide-up 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .accordion-content[data-state="open"],
+  .accordion-content[data-state="closed"] {
+    animation: none !important;
+  }
 }
 
 /* Custom medical neon line accents & pulse animation */

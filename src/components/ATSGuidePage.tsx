@@ -1,11 +1,12 @@
 import React from "react";
+import { motion } from "motion/react";
 import {
   Activity,
-  ArrowDown,
   ArrowRight,
   CheckCircle2,
   ClipboardList,
   Cpu,
+  Database,
   FileText,
   HeartPulse,
   Network,
@@ -15,10 +16,16 @@ import {
   Stethoscope,
   UserRound,
 } from "lucide-react";
+import { Card } from "./ui/Card";
+import { Button } from "./ui/Button";
+import { Accordion, AccordionItem } from "./ui/Accordion";
+import { staggerContainer, staggerItem } from "../lib/motion";
+import type { ViewId } from "../lib/navigation";
 
 interface ATSGuidePageProps {
   onStart: () => void;
   onSkip: () => void;
+  onNavigate: (view: ViewId) => void;
 }
 
 const phases = [
@@ -26,7 +33,6 @@ const phases = [
     number: "01",
     title: "Pengumpulan Data Pasien",
     subtitle: "Diisi petugas atau perawat triase",
-    accent: "sky",
     icon: ClipboardList,
     steps: [
       {
@@ -45,13 +51,13 @@ const phases = [
         title: "Tanda Vital dan Tingkat Kesadaran",
         icon: HeartPulse,
         summary: "Ukur kondisi fisiologis dan respons pasien.",
-        details: ["Tekanan darah, nadi, napas, suhu, dan SpO₂", "Penilaian cepat AVPU", "Glasgow Coma Scale (GCS)"],
+        details: ["Tekanan darah, nadi, napas, suhu, dan SpO2", "Penilaian cepat AVPU", "Glasgow Coma Scale (GCS)"],
       },
       {
         title: "Skala Nyeri dan CPPT",
         icon: SlidersHorizontal,
         summary: "Lengkapi gambaran nyeri dan pemeriksaan terintegrasi.",
-        details: ["Skala nyeri 0–10 dan kategorinya", "Lokasi serta penjalaran nyeri", "Catatan Perkembangan Pasien Terintegrasi (CPPT)"],
+        details: ["Skala nyeri 0-10 dan kategorinya", "Lokasi serta penjalaran nyeri", "Catatan Perkembangan Pasien Terintegrasi (CPPT)"],
       },
     ],
   },
@@ -59,7 +65,6 @@ const phases = [
     number: "02",
     title: "Analisis Sistem",
     subtitle: "Dijalankan otomatis setelah data lengkap",
-    accent: "violet",
     icon: Cpu,
     steps: [
       {
@@ -86,7 +91,6 @@ const phases = [
     number: "03",
     title: "Validasi Klinis",
     subtitle: "Keputusan akhir tetap oleh tenaga kesehatan",
-    accent: "rose",
     icon: Stethoscope,
     steps: [
       {
@@ -99,97 +103,105 @@ const phases = [
   },
 ] as const;
 
-const palettes = {
-  sky: {
-    badge: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
-    border: "border-sky-200 dark:border-sky-900",
-    icon: "bg-sky-600 text-white",
-    dot: "bg-sky-500",
-  },
-  violet: {
-    badge: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300",
-    border: "border-violet-200 dark:border-violet-900",
-    icon: "bg-violet-600 text-white",
-    dot: "bg-violet-500",
-  },
-  rose: {
-    badge: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
-    border: "border-rose-200 dark:border-rose-900",
-    icon: "bg-rose-600 text-white",
-    dot: "bg-rose-500",
-  },
-} as const;
+const quickActions = [
+  { view: "triage" as ViewId, icon: ClipboardList, label: "Form Utama", description: "Isi triase langkah demi langkah" },
+  { view: "narrative" as ViewId, icon: FileText, label: "Pengurai Narasi", description: "Ubah catatan bebas jadi data terstruktur" },
+  { view: "records" as ViewId, icon: Database, label: "Daftar Rekam", description: "Lihat dan kelola riwayat triase" },
+];
 
-export default function ATSGuidePage({ onStart, onSkip }: ATSGuidePageProps) {
+export default function ATSGuidePage({ onStart, onSkip, onNavigate }: ATSGuidePageProps) {
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900">
-      <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-sky-200/40 blur-3xl dark:bg-sky-900/20" />
-      <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-violet-200/40 blur-3xl dark:bg-violet-900/20" />
-
-      <div className="relative border-b border-slate-200 px-5 py-8 dark:border-slate-800 sm:px-8 lg:px-10">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-3xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-              <Activity size={20} aria-hidden="true" />
+    <div className="space-y-6">
+      {/* Hero */}
+      <Card padding="lg" className="relative overflow-hidden">
+        <div className="pointer-events-none absolute -right-20 -top-20 size-64 rounded-full bg-primary/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -left-20 size-64 rounded-full bg-accent/10 blur-3xl" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="max-w-2xl">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-secondary/10 px-3.5 py-1.5 text-sm font-bold text-secondary">
+              <Activity size={16} aria-hidden />
               Asisten Penggunaan Aplikasi
             </div>
-            <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-              Alur Keputusan Triase ATS
-            </h2>
-            <p className="mt-3 max-w-2xl text-base font-medium text-slate-600 dark:text-slate-300">
-              Ikuti gambaran singkat ini untuk memahami bagaimana data pasien diproses menjadi rekomendasi ATS yang kemudian divalidasi oleh tenaga kesehatan.
+            <h2 className="text-2xl font-black tracking-tight text-text sm:text-3xl">Alur Keputusan Triase ATS</h2>
+            <p className="mt-3 text-base font-medium text-text-muted">
+              Data pasien diproses menjadi rekomendasi ATS yang kemudian divalidasi oleh tenaga kesehatan — sistem membantu, keputusan akhir tetap klinis.
             </p>
-          </div>
-
-          <button
-            id="btn-skip-ats-guide"
-            type="button"
-            onClick={onSkip}
-            className="shrink-0 rounded-2xl border-2 border-slate-300 bg-white px-5 py-3 text-base font-bold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            Lewati panduan
-          </button>
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              <Button variant="primary" onClick={onStart} rightIcon={<ArrowRight className="size-4" />}>Mulai Triase</Button>
+              <Button variant="ghost" onClick={onSkip}>Lewati panduan</Button>
+            </div>
+          </motion.div>
         </div>
-      </div>
+      </Card>
 
-      <div className="relative space-y-5 px-5 py-7 sm:px-8 lg:px-10">
-        {phases.map((phase, phaseIndex) => {
-          const palette = palettes[phase.accent];
-          const PhaseIcon = phase.icon;
-
+      {/* Quick Action Cards */}
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 gap-3.5 sm:grid-cols-3"
+      >
+        {quickActions.map((action) => {
+          const Icon = action.icon;
           return (
-            <React.Fragment key={phase.number}>
-              <article className={`rounded-3xl border-2 bg-slate-50/70 p-5 dark:bg-slate-950/30 sm:p-6 ${palette.border}`}>
-                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${palette.icon}`}>
-                    <PhaseIcon size={25} aria-hidden="true" />
-                  </div>
-                  <div>
-                    <span className={`inline-flex rounded-full px-3 py-1 text-sm font-black ${palette.badge}`}>
-                      TAHAP {phase.number}
-                    </span>
-                    <h3 className="mt-2 text-xl font-black text-slate-900 dark:text-white">{phase.title}</h3>
-                    <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{phase.subtitle}</p>
-                  </div>
-                </div>
+            <motion.button
+              key={action.view}
+              variants={staggerItem}
+              type="button"
+              onClick={() => onNavigate(action.view)}
+              className="group flex items-center gap-3 rounded-2xl border border-border/70 bg-surface p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+            >
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+                <Icon className="size-5.5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-black text-text">{action.label}</span>
+                <span className="block truncate text-xs font-medium text-text-muted">{action.description}</span>
+              </span>
+            </motion.button>
+          );
+        })}
+      </motion.div>
 
-                <div className={`grid gap-4 ${phase.steps.length === 4 ? "md:grid-cols-2 xl:grid-cols-4" : phase.steps.length === 3 ? "md:grid-cols-3" : "grid-cols-1"}`}>
+      {/* Educational content — progressive disclosure via accordion instead of a wall of always-open cards */}
+      <div className="space-y-3">
+        <p className="px-1 text-xs font-black uppercase tracking-wider text-text-muted">Bagaimana sistem bekerja</p>
+        <Accordion type="single" collapsible defaultValue="01" className="space-y-3">
+          {phases.map((phase) => {
+            const PhaseIcon = phase.icon;
+            return (
+              <AccordionItem
+                key={phase.number}
+                value={phase.number}
+                title={
+                  <span className="flex items-center gap-3">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <PhaseIcon className="size-4.5" />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-black text-text">Tahap {phase.number} &middot; {phase.title}</span>
+                      <span className="block text-xs font-medium text-text-muted">{phase.subtitle}</span>
+                    </span>
+                  </span>
+                }
+              >
+                <div className={`grid gap-3 ${phase.steps.length >= 3 ? "sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
                   {phase.steps.map((step, stepIndex) => {
                     const StepIcon = step.icon;
                     return (
-                      <div key={step.title} className="relative rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                        <div className="mb-4 flex items-start justify-between gap-3">
-                          <div className={`rounded-xl p-2.5 ${palette.badge}`}>
-                            <StepIcon size={22} aria-hidden="true" />
-                          </div>
-                          <span className="font-mono text-sm font-black text-slate-400">{phase.number}.{stepIndex + 1}</span>
+                      <div key={step.title} className="rounded-xl border border-border/70 bg-bg p-4">
+                        <div className="mb-2.5 flex items-start justify-between gap-2">
+                          <span className="rounded-lg bg-primary/10 p-2 text-primary">
+                            <StepIcon className="size-4.5" />
+                          </span>
+                          <span className="font-mono text-xs font-black text-text-muted">{phase.number}.{stepIndex + 1}</span>
                         </div>
-                        <h4 className="text-base font-black text-slate-900 dark:text-white">{step.title}</h4>
-                        <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">{step.summary}</p>
-                        <ul className="mt-4 space-y-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+                        <h4 className="text-sm font-black text-text">{step.title}</h4>
+                        <p className="mt-1 text-xs font-medium text-text-muted">{step.summary}</p>
+                        <ul className="mt-3 space-y-1.5 border-t border-border/60 pt-3">
                           {step.details.map((detail) => (
-                            <li key={detail} className="flex items-start gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                              <span className={`mt-2 h-2 w-2 shrink-0 rounded-full ${palette.dot}`} />
+                            <li key={detail} className="flex items-start gap-2 text-xs font-semibold text-text">
+                              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
                               <span>{detail}</span>
                             </li>
                           ))}
@@ -198,36 +210,24 @@ export default function ATSGuidePage({ onStart, onSkip }: ATSGuidePageProps) {
                     );
                   })}
                 </div>
-              </article>
-
-              {phaseIndex < phases.length - 1 && (
-                <div className="flex justify-center text-slate-400" aria-hidden="true">
-                  <ArrowDown className="sm:hidden" size={30} />
-                  <ArrowRight className="hidden sm:block rotate-90" size={30} />
-                </div>
-              )}
-            </React.Fragment>
-          );
-        })}
-
-        <div className="rounded-3xl bg-slate-900 p-6 text-white dark:bg-slate-800 sm:flex sm:items-center sm:justify-between sm:gap-6">
-          <div>
-            <h3 className="text-xl font-black">Siap memulai skrining triase?</h3>
-            <p className="mt-2 text-sm font-medium text-slate-300">
-              Sistem membantu proses keputusan, tetapi penilaian dan keputusan klinis akhir tetap menjadi tanggung jawab tenaga kesehatan.
-            </p>
-          </div>
-          <button
-            id="btn-start-triage-from-guide"
-            type="button"
-            onClick={onStart}
-            className="mt-5 flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-6 py-4 text-base font-black text-slate-950 transition hover:bg-emerald-400 sm:mt-0 sm:w-auto"
-          >
-            Mulai Triase
-            <ArrowRight size={22} aria-hidden="true" />
-          </button>
-        </div>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
       </div>
-    </section>
+
+      {/* Closing CTA */}
+      <Card padding="lg" className="bg-linear-to-br from-slate-900 to-slate-800 text-white sm:flex sm:items-center sm:justify-between sm:gap-6 dark:from-slate-950 dark:to-slate-900">
+        <div>
+          <h3 className="text-xl font-black">Siap memulai skrining triase?</h3>
+          <p className="mt-2 text-sm font-medium text-slate-300">
+            Sistem membantu proses keputusan, tetapi penilaian dan keputusan klinis akhir tetap menjadi tanggung jawab tenaga kesehatan.
+          </p>
+        </div>
+        <Button variant="secondary" size="lg" onClick={onStart} rightIcon={<ArrowRight className="size-5" />} className="mt-5 w-full sm:mt-0 sm:w-auto">
+          Mulai Triase
+        </Button>
+      </Card>
+    </div>
   );
 }

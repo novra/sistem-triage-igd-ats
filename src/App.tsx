@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { TriageRecord, Gender, CaraDatang, ATS_LEVEL_DETAILS } from "./types";
 import IdentitasForm from "./components/IdentitasForm";
 import KeluhanAwalForm from "./components/KeluhanAwalForm";
@@ -6,19 +7,31 @@ import VitalSignForm from "./components/VitalSignForm";
 import NyeriForm from "./components/NyeriForm";
 import SOAPFormView from "./components/SOAPFormView";
 import ATSHasilPanel from "./components/ATSHasilPanel";
-import RecordHistoryList from "./components/RecordHistoryList";
 import ATSGuidePage from "./components/ATSGuidePage";
-import NarrativeWorkspace from "./components/NarrativeWorkspace";
-import UserManagementPage from "./components/UserManagementPage";
 import ChangePasswordModal from "./components/ChangePasswordModal";
+import { SkeletonList } from "./components/ui/Skeleton";
+
+// Code-split secondary views so the core triage wizard stays a lean initial bundle.
+const NarrativeWorkspace = lazy(() => import("./components/NarrativeWorkspace"));
+const RecordHistoryList = lazy(() => import("./components/RecordHistoryList"));
+const UserManagementPage = lazy(() => import("./components/UserManagementPage"));
 import { useAuth } from "./context/AuthContext";
 import { apiFetch } from "./lib/api";
+import { MAIN_NAV_ITEMS } from "./lib/navigation";
+import { pageTransition } from "./lib/motion";
+import { useToast } from "./components/ui/Toast";
+import { useConfirm } from "./components/ui/ConfirmDialog";
+import { Button } from "./components/ui/Button";
+import { Card } from "./components/ui/Card";
+import { Badge, Chip } from "./components/ui/Badge";
+import { Stepper } from "./components/ui/Stepper";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "./components/ui/DropdownMenu";
+import { CommandPalette } from "./components/ui/CommandPalette";
 import {
   Activity,
   ArrowRight,
   ArrowLeft,
   Wand2,
-  RefreshCw,
   Sun,
   Moon,
   CheckCircle2,
@@ -28,14 +41,12 @@ import {
   Clock,
   Cpu,
   LogOut,
-  Users,
   KeyRound,
   UserCircle2,
-  BookOpen,
   ClipboardList,
-  FileText,
-  Database,
-  Accessibility
+  Accessibility,
+  Plus,
+  ChevronDown
 } from "lucide-react";
 
 const INITIAL_FORM: TriageRecord = {
@@ -144,13 +155,6 @@ const STEPS = [
   { label: "Skala Nyeri", desc: "Intensitas, lokasi & radiasi" },
   { label: "CPPT", desc: "Catatan perkembangan terintegrasi" },
   { label: "Analisis ATS AI", desc: "Rekomendasi triase & output final" }
-];
-
-const MAIN_NAV_ITEMS = [
-  { id: "guide" as const, label: "Guidance", shortLabel: "Panduan", description: "Panduan alur ATS", icon: BookOpen },
-  { id: "triage" as const, label: "Form Utama", shortLabel: "Form", description: "Input dan analisis triase AI", icon: ClipboardList },
-  { id: "narrative" as const, label: "Pengurai Narasi", shortLabel: "Narasi", description: "Pilah narasi klinis", icon: FileText },
-  { id: "records" as const, label: "Daftar Rekam", shortLabel: "Rekam", description: "Lihat dan kelola data tersimpan", icon: Database },
 ];
 
 // Clinic Presets for instant training tests or fast evaluations
@@ -283,9 +287,19 @@ const MOCK_PRESETS = [
   }
 ];
 
+const ATS_QUICK_REFERENCE: Array<{ level: 1 | 2 | 3 | 4 | 5; label: string; limit: string }> = [
+  { level: 1, label: "Resusitasi total / segera", limit: "Segera" },
+  { level: 2, label: "Gawat darurat", limit: "≤ 10 menit" },
+  { level: 3, label: "Darurat", limit: "≤ 30 menit" },
+  { level: 4, label: "Ringan", limit: "≤ 60 menit" },
+  { level: 5, label: "Non-emergency", limit: "≤ 120 menit" },
+];
+
 export default function App() {
   const { user, logout } = useAuth();
   const isAdmin = user?.role === "admin";
+  const toast = useToast();
+  const confirm = useConfirm();
   const [view, setView] = useState<"guide" | "triage" | "narrative" | "records" | "users">(() =>
     localStorage.getItem("ats_guide_dismissed") === "true" ? "triage" : "guide"
   );
@@ -295,8 +309,6 @@ export default function App() {
   const [records, setRecords] = useState<TriageRecord[]>([]);
   const [isClassifying, setIsClassifying] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [displayMode, setDisplayMode] = useState<"standard" | "accessible">(() =>
     localStorage.getItem("ats_display_mode") === "accessible" ? "accessible" : "standard"
@@ -310,6 +322,14 @@ export default function App() {
   const [aiModel, setAiModel] = useState<string>(() => {
     return localStorage.getItem("ats_ai_model") || "openai-oss";
   });
+
+  // Bridges legacy setErrorMsg/setSuccessMsg(message | null) call sites — used
+  // throughout this file and passed down to NarrativeWorkspace/ImportTriageRecords
+  // unchanged — onto the new toast system. Passing null is a no-op (toasts
+  // auto-dismiss on their own); this keeps every existing call site working
+  // without touching child components until their own restyle pass.
+  const setErrorMsg = (message: string | null) => { if (message) toast.error(message); };
+  const setSuccessMsg = (message: string | null) => { if (message) toast.success(message); };
 
   const handleSetAiProvider = (provider: string) => {
     setAiProvider(provider);
@@ -413,8 +433,15 @@ export default function App() {
   };
 
   // Reset current form to empty defaults
-  const handleResetForm = () => {
-    if (confirm("Kosongkan seluruh isian form triage yang sedang aktif?")) {
+  const handleResetForm = async () => {
+    const confirmed = await confirm({
+      title: "Kosongkan formulir?",
+      description: "Seluruh isian form triase yang sedang aktif akan dihapus dan tidak dapat dikembalikan.",
+      confirmLabel: "Ya, kosongkan",
+      cancelLabel: "Batal",
+      tone: "danger",
+    });
+    if (confirmed) {
       setForm({ ...INITIAL_FORM });
       localStorage.removeItem("ats_cached_form");
       setActiveStep(0);
@@ -449,7 +476,7 @@ export default function App() {
 
       const classificationOutput = await response.json();
       updateFormState({ atsPrediction: classificationOutput });
-      
+
       // Jump to step 5 (Analisis ATS) immediately to inspect output
       setActiveStep(5);
     } catch (err: any) {
@@ -461,8 +488,8 @@ export default function App() {
   };
 
   // Perform permanent server save
-  const handleSaveTriageLog = async (overrideData?: { 
-    atsLevelOverride?: 1 | 2 | 3 | 4 | 5; 
+  const handleSaveTriageLog = async (overrideData?: {
+    atsLevelOverride?: 1 | 2 | 3 | 4 | 5;
     alasanOverride?: string;
     namaPetugas?: string;
     jabatanPetugas?: string;
@@ -472,7 +499,7 @@ export default function App() {
     try {
       const finalPayload: TriageRecord = {
         ...form,
-        atsFinal: overrideData 
+        atsFinal: overrideData
           ? {
               atsLevelOverride: overrideData.atsLevelOverride,
               alasanOverride: overrideData.alasanOverride,
@@ -496,7 +523,7 @@ export default function App() {
       }
 
       const saved = await response.json();
-      
+
       // Reset form, fetch records, alert user
       setForm({ ...INITIAL_FORM });
       localStorage.removeItem("ats_cached_form");
@@ -583,109 +610,95 @@ export default function App() {
   const spo2Value = form.vitalSign?.saturasiOksigen;
   const spo2Display = typeof spo2Value === "number" ? `${spo2Value}%` : "Belum diisi";
 
+  const showFab = view !== "triage";
+
   return (
-    <div className={`min-h-screen transition-colors ${darkMode ? "text-slate-100" : "text-slate-900"}`}>
-      
-      {/* Upper header */}
-      <header className={`sticky top-0 z-40 border-b transition-all ${darkMode ? "bg-slate-950/90 border-slate-800" : "bg-white/88 border-white/70 shadow-sm"} backdrop-blur-xl`}>
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+    <div className="min-h-screen bg-bg text-text transition-colors">
+
+      <CommandPalette
+        isAdmin={isAdmin}
+        onNavigate={(nextView) => { setView(nextView); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+        darkMode={darkMode}
+        onToggleDarkMode={() => setDarkMode((prev) => !prev)}
+        onToggleAccessibility={() => setDisplayMode((current) => (current === "standard" ? "accessible" : "standard"))}
+      />
+
+      {/* Header */}
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-surface/85 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-2.5 sm:gap-3.5">
-            <div className="app-brand-logo p-3 bg-linear-to-br from-rose-500 via-rose-600 to-red-700 text-white rounded-2xl shadow-lg shadow-rose-200/50 dark:shadow-none flex items-center justify-center">
-              <Activity size={25} />
+            <div className="app-brand-logo flex items-center justify-center rounded-2xl bg-linear-to-br from-primary to-accent p-3 text-white shadow-lg shadow-primary/25">
+              <Activity size={24} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="app-brand-title truncate text-lg font-extrabold tracking-tight text-slate-950 dark:text-white">E-Triase IGD ATS</h1>
-                <span className="hidden text-xs font-bold px-2.5 py-1 bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 rounded-full select-none border border-rose-100 dark:border-rose-900 sm:inline-flex">
-                  BETA
-                </span>
+                <h1 className="app-brand-title truncate text-lg font-extrabold tracking-tight text-text">E-Triase IGD ATS</h1>
+                <Badge tone="danger" className="hidden sm:inline-flex">BETA</Badge>
               </div>
-              <p className="hidden sm:block text-sm font-medium text-slate-500 dark:text-slate-400">Sistem Pendukung Keputusan Klinis IGD</p>
+              <p className="hidden text-sm font-medium text-text-muted sm:block">Sistem Pendukung Keputusan Klinis IGD</p>
             </div>
           </div>
 
-          <button
-            id="btn-display-mode"
-            type="button"
-            onClick={() => setDisplayMode((current) => current === "standard" ? "accessible" : "standard")}
-            className={`ml-auto mr-2 flex items-center gap-2 rounded-xl border px-3 py-2 font-bold shadow-sm transition sm:mr-4 ${displayMode === "accessible" ? "min-h-14" : "min-h-12"} ${
-              displayMode === "accessible"
-                ? "border-teal-400 bg-teal-700 text-white dark:border-teal-600"
-                : "border-slate-200 bg-white/90 text-slate-700 hover:border-sky-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-            }`}
-            title={displayMode === "accessible" ? "Gunakan tampilan standar modern" : "Gunakan aksesibilitas lanjut"}
-            aria-label={displayMode === "accessible" ? "Nonaktifkan Aksesibilitas Lanjut" : "Aktifkan Aksesibilitas Lanjut"}
-            aria-pressed={displayMode === "accessible"}
-          >
-            <Accessibility size={21} />
-            <span className="sm:hidden">A+</span>
-            <span className="hidden sm:inline">{displayMode === "accessible" ? "Aksesibilitas Aktif" : "Tampilan Standar"}</span>
-          </button>
-
-          {/* Quick Real-Time Status Rails */}
-          <div className="hidden md:flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-xl text-emerald-800 dark:text-emerald-300 font-bold text-xs">
-              <span className="pulse-indicator text-emerald-500"></span>
-              <span>SISTEM AKTIF</span>
-            </div>
-
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {isHypoxic && (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-rose-100 border border-rose-300 text-rose-800 text-[10px] font-extrabold rounded-lg animate-bounce animate-duration-1000">
-                <AlertOctagon size={12} />
-                <span>HIPOKSIA DARURAT SpO2 &lt; 90%</span>
-              </div>
+              <Badge tone="danger" className="hidden animate-pulse sm:inline-flex" icon={<AlertOctagon className="size-3.5" />}>
+                SpO2 &lt; 90%
+              </Badge>
             )}
             {isComa && (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-red-100 border border-red-300 text-red-800 text-[10px] font-extrabold rounded-lg animate-bounce">
-                <AlertOctagon size={12} />
-                <span>PENURUNAN KESADARAN BERAT GCS ≤ 8</span>
-              </div>
+              <Badge tone="danger" className="hidden animate-pulse sm:inline-flex" icon={<AlertOctagon className="size-3.5" />}>
+                GCS &le; 8
+              </Badge>
             )}
-            
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
-              <button
-                id="btn-light-theme"
-                onClick={() => setDarkMode(false)}
-                className={`p-2.5 rounded-lg cursor-pointer ${!darkMode ? "bg-white text-sky-700 shadow-sm" : "text-slate-400 hover:text-white"}`}
-                title="Mode Terang"
-              >
-                <Sun size={19} />
-              </button>
-              <button
-                id="btn-dark-theme"
-                onClick={() => setDarkMode(true)}
-                className={`p-2.5 rounded-lg cursor-pointer ${darkMode ? "bg-slate-950 text-amber-400 shadow-sm" : "text-slate-500 hover:text-black"}`}
-                title="Mode Gelap"
-              >
-                <Moon size={19} />
-              </button>
-            </div>
+            <Badge tone="secondary" className="hidden md:inline-flex" icon={<span className="pulse-indicator" />}>
+              SISTEM AKTIF
+            </Badge>
 
-            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-2 px-2 py-1 text-sm text-slate-600 dark:text-slate-300 font-semibold">
-                <UserCircle2 size={20} />
-                <span className="hidden lg:inline">{user?.name}</span>
-                <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold uppercase">
-                  {isAdmin ? "Admin" : "User"}
-                </span>
-              </div>
-              <button
-                id="btn-change-password"
-                onClick={() => setShowChangePassword(true)}
-                title="Ganti Password"
-                className="p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100 cursor-pointer"
-              >
-                <KeyRound size={19} />
-              </button>
-              <button
-                id="btn-logout"
-                onClick={() => logout()}
-                title="Keluar"
-                className="p-2.5 rounded-xl text-slate-500 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30 cursor-pointer"
-              >
-                <LogOut size={19} />
-              </button>
-            </div>
+            <Button
+              variant={displayMode === "accessible" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setDisplayMode((current) => (current === "standard" ? "accessible" : "standard"))}
+              aria-pressed={displayMode === "accessible"}
+              aria-label={displayMode === "accessible" ? "Nonaktifkan Aksesibilitas Lanjut" : "Aktifkan Aksesibilitas Lanjut"}
+              leftIcon={<Accessibility className="size-4.5" />}
+              title="Aksesibilitas Lanjut"
+            >
+              <span className="hidden sm:inline">{displayMode === "accessible" ? "Aksesibilitas Aktif" : "Aksesibilitas"}</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDarkMode((prev) => !prev)}
+              aria-label={darkMode ? "Aktifkan mode terang" : "Aktifkan mode gelap"}
+              title={darkMode ? "Mode Terang" : "Mode Gelap"}
+            >
+              {darkMode ? <Sun className="size-4.5" /> : <Moon className="size-4.5" />}
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-surface px-2.5 py-1.5 text-sm font-semibold text-text transition hover:border-primary/40"
+                  aria-label="Menu akun"
+                >
+                  <UserCircle2 className="size-5 text-text-muted" />
+                  <span className="hidden max-w-24 truncate lg:inline">{user?.name}</span>
+                  <ChevronDown className="size-3.5 text-text-muted" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>{isAdmin ? "Admin" : "User"} &middot; {user?.name}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setShowChangePassword(true)}>
+                  <KeyRound className="size-4" /> Ganti Password
+                </DropdownMenuItem>
+                <DropdownMenuItem danger onSelect={() => logout()}>
+                  <LogOut className="size-4" /> Keluar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -694,15 +707,15 @@ export default function App() {
         <ChangePasswordModal blocking={false} onSuccess={() => setShowChangePassword(false)} onClose={() => setShowChangePassword(false)} />
       )}
 
-      <div className="mx-auto grid max-w-[1600px] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <aside className="hidden border-b border-slate-200/80 bg-white/65 px-4 py-6 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-950/50 lg:block lg:min-h-[calc(100vh-76px)] lg:border-b-0 lg:border-r">
+      <div className="mx-auto grid max-w-[1600px] grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="hidden border-b border-border/70 px-4 py-6 lg:block lg:min-h-[calc(100vh-76px)] lg:border-b-0 lg:border-r">
           <div className="lg:sticky lg:top-24">
             <div className="mb-4 px-2">
-              <p className="text-sm font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Menu Utama</p>
-              <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-400">Pilih halaman yang ingin digunakan.</p>
+              <p className="text-sm font-extrabold uppercase tracking-wider text-primary">Menu Utama</p>
+              <p className="mt-1 text-sm font-medium text-text-muted">Pilih halaman yang ingin digunakan.</p>
             </div>
-            <nav className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1" aria-label="Navigasi utama aplikasi">
-              {MAIN_NAV_ITEMS.map((item, index) => {
+            <nav className="grid grid-cols-1 gap-2.5" aria-label="Navigasi utama aplikasi">
+              {MAIN_NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => {
                 const MenuIcon = item.icon;
                 const active = view === item.id;
                 return (
@@ -710,367 +723,221 @@ export default function App() {
                     key={item.id}
                     type="button"
                     onClick={() => setView(item.id)}
-                    className={`group flex min-h-20 items-center gap-3 rounded-2xl border p-4 text-left transition-all ${
+                    className={`group flex min-h-18 items-center gap-3 rounded-2xl border p-3.5 text-left transition-all ${
                       active
-                        ? "border-indigo-200 bg-linear-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-200/50 dark:border-indigo-700 dark:shadow-none"
-                        : "border-slate-200/80 bg-white/85 text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:border-indigo-700"
+                        ? "border-transparent bg-linear-to-r from-primary to-accent text-white shadow-lg shadow-primary/25"
+                        : "border-border/70 bg-surface text-text hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
                     }`}
                     aria-current={active ? "page" : undefined}
                   >
-                    <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${active ? "bg-white/18 text-white" : "bg-indigo-50 text-indigo-700 group-hover:bg-indigo-100 dark:bg-slate-800 dark:text-indigo-300"}`}>
-                      <MenuIcon size={23} />
+                    <span className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${active ? "bg-white/20 text-white" : "bg-primary/10 text-primary group-hover:bg-primary/15"}`}>
+                      <MenuIcon size={21} />
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-base font-black">{index + 1}. {item.label}</span>
-                      <span className={`mt-0.5 block text-sm font-medium ${active ? "text-indigo-100" : "text-slate-500 dark:text-slate-400"}`}>{item.description}</span>
+                      <span className="block text-sm font-black">{item.label}</span>
+                      <span className={`mt-0.5 block truncate text-xs font-medium ${active ? "text-white/80" : "text-text-muted"}`}>{item.description}</span>
                     </span>
                   </button>
                 );
               })}
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setView("users")}
-                  className={`flex min-h-16 items-center gap-3 rounded-2xl border-2 p-4 text-left transition ${view === "users" ? "border-violet-500 bg-violet-50 text-violet-900 dark:bg-violet-950/40 dark:text-violet-200" : "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"}`}
-                >
-                  <Users size={23} />
-                  <span className="text-base font-black">Kelola Pengguna</span>
-                </button>
-              )}
             </nav>
           </div>
         </aside>
 
       {/* Main Container */}
-      <main className="min-w-0 px-4 sm:px-6 py-5 sm:py-7 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-36 lg:pb-24">
+      <main className="min-w-0 px-4 py-5 sm:px-6 sm:py-7">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={view}
+            variants={pageTransition}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="grid grid-cols-1 gap-6 pb-36 lg:grid-cols-12 lg:pb-24"
+          >
         {view === "guide" ? (
           <div className="lg:col-span-12">
-            <ATSGuidePage onStart={closeGuide} onSkip={closeGuide} />
+            <ATSGuidePage onStart={closeGuide} onSkip={closeGuide} onNavigate={setView} />
           </div>
         ) : view === "narrative" ? (
-          <div className="space-y-4 lg:col-span-12">
-            {successMsg && (
-              <div className="flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">
-                <CheckCircle2 size={18} className="shrink-0" />
-                <span>{successMsg}</span>
-              </div>
-            )}
-            {errorMsg && (
-              <div className="flex items-center gap-2 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-800">
-                <AlertOctagon size={18} className="shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-            <NarrativeWorkspace
-              initialRecord={INITIAL_FORM}
-              aiProvider={aiProvider}
-              aiModel={aiModel}
-              setErrorMsg={setErrorMsg}
-              setSuccessMsg={setSuccessMsg}
-              onRecordsChanged={fetchRecords}
-            />
+          <div className="lg:col-span-12">
+            <Suspense fallback={<SkeletonList rows={3} />}>
+              <NarrativeWorkspace
+                initialRecord={INITIAL_FORM}
+                aiProvider={aiProvider}
+                aiModel={aiModel}
+                setErrorMsg={setErrorMsg}
+                setSuccessMsg={setSuccessMsg}
+                onRecordsChanged={fetchRecords}
+              />
+            </Suspense>
           </div>
         ) : view === "records" ? (
           <div className="lg:col-span-12">
-            <RecordHistoryList
-              records={records}
-              onSelectRecord={handleLoadExistingRecord}
-              onDeleteRecord={handleDeleteTriageLog}
-              onExportDataset={handleExportJsonDataset}
-              isAdmin={isAdmin}
-              currentUserId={user?.id}
-            />
+            <Suspense fallback={<SkeletonList rows={5} />}>
+              <RecordHistoryList
+                records={records}
+                onSelectRecord={handleLoadExistingRecord}
+                onDeleteRecord={handleDeleteTriageLog}
+                onExportDataset={handleExportJsonDataset}
+                isAdmin={isAdmin}
+                currentUserId={user?.id}
+              />
+            </Suspense>
           </div>
         ) : view === "users" && isAdmin ? (
           <div className="lg:col-span-12">
-            <UserManagementPage />
+            <Suspense fallback={<SkeletonList rows={3} />}>
+              <UserManagementPage />
+            </Suspense>
           </div>
         ) : (
         <>
-        {/* Banner triggers & ATS Decision Pipeline Flowchart */}
-        <div className="lg:col-span-12 space-y-4">
-          {successMsg && (
-            <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 animate-fade-in">
-              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-              <span>{successMsg}</span>
-            </div>
-          )}
-          {errorMsg && (
-            <div className="bg-rose-50 border border-rose-300 text-rose-800 px-4 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 animate-fade-in">
-              <AlertOctagon size={16} className="text-rose-600 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          <div className="relative overflow-hidden rounded-3xl border border-sky-100 bg-linear-to-r from-white via-sky-50 to-indigo-50 p-6 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/40">
-            <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-sky-200/40 blur-3xl dark:bg-indigo-800/20" />
+        <div className="lg:col-span-12">
+          <Card padding="lg" className="relative overflow-hidden">
+            <div className="pointer-events-none absolute -right-12 -top-16 size-40 rounded-full bg-primary/10 blur-3xl" />
             <div className="relative flex items-start gap-4">
-              <div className="rounded-2xl bg-sky-600 p-3 text-white shadow-lg shadow-sky-200/60 dark:shadow-none">
-                <ClipboardList size={28} />
+              <div className="rounded-2xl bg-primary p-3 text-primary-foreground shadow-lg shadow-primary/25">
+                <ClipboardList size={26} />
               </div>
               <div>
-                <p className="text-sm font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Ruang Kerja Klinis</p>
-                <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white">Form Utama Triase ATS</h2>
-                <p className="mt-2 max-w-3xl text-base font-medium text-slate-600 dark:text-slate-300">
+                <p className="text-sm font-bold uppercase tracking-wider text-primary">Ruang Kerja Klinis</p>
+                <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-text">Form Utama Triase ATS</h2>
+                <p className="mt-2 max-w-3xl text-base font-medium text-text-muted">
                   Lengkapi data secara bertahap, tinjau kondisi pasien, lalu jalankan analisis ATS. Setiap langkah dapat dibuka kembali sebelum hasil disimpan.
                 </p>
               </div>
             </div>
-          </div>
+          </Card>
+        </div>
 
-          {/* AI Engine Selection Panel */}
-          <div className={`p-5 rounded-3xl border transition-all ${darkMode ? "bg-slate-900/90 border-slate-800" : "bg-white/90 border-slate-200"} shadow-sm backdrop-blur`}>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* AI Engine Selection Panel */}
+        <div className="lg:col-span-12">
+          <Card padding="md">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse shrink-0" />
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                    Pilih Penyedia Kecerdasan Buatan (AI Engine Selection)
-                  </h3>
+                  <span className="size-2.5 shrink-0 animate-pulse rounded-full bg-primary" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-text">Pilih Penyedia Kecerdasan Buatan</h3>
                 </div>
-                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-                  Silakan pilih penyedia layanan kecerdasan buatan (AI) yang ingin Anda gunakan untuk menganalisis data triase klinis. Apabila sambungan API dari penyedia mengalami kendala atau kunci API belum terpasang, sistem akan beralih secara dinamis dan aman ke kriteria standar berbasis aturan klinis objektif (Rule-Based Clinical Fallback).
+                <p className="text-xs font-medium leading-relaxed text-text-muted">
+                  Bila sambungan API penyedia bermasalah atau kunci API belum terpasang, sistem otomatis beralih ke kriteria standar berbasis aturan klinis objektif.
                 </p>
               </div>
-              
-              <div className="flex bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0 self-start sm:self-center flex-wrap gap-1 md:gap-0 font-sans">
-                <button
-                  id="provider-gemini"
-                  type="button"
-                  disabled
-                  aria-disabled="true"
-                  title="Gemini 3.5 dinonaktifkan. Gunakan Model Mandiri, Hugging Face, atau Pure Rule Based."
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600 opacity-70"
-                >
-                  <Wand2 size={13} />
-                  <span>Google Gemini 3.5</span>
-                  <span className="text-[9px] uppercase tracking-wider">Off</span>
-                </button>
-                <button
-                  id="provider-rulebased"
-                  type="button"
-                  onClick={() => handleSetAiProvider("rulebased")}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                    aiProvider === "rulebased"
-                      ? "bg-indigo-600 text-white shadow-xs"
-                      : "text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                  }`}
-                >
-                  <CheckCircle2 size={13} />
-                  <span>Pure Rule Based</span>
-                </button>
+              <div className="flex flex-wrap gap-1.5">
+                <Chip selected={false} disabled title="Gemini 3.5 dinonaktifkan. Gunakan Model Mandiri, Hugging Face, atau Pure Rule Based." className="cursor-not-allowed opacity-50">
+                  <Wand2 className="size-3.5" /> Gemini 3.5
+                </Chip>
+                <Chip selected={aiProvider === "rulebased"} onClick={() => handleSetAiProvider("rulebased")}>
+                  <CheckCircle2 className="size-3.5" /> Pure Rule Based
+                </Chip>
                 {isAdmin && (
-                  <button
-                    id="provider-huggingface"
-                    type="button"
-                    onClick={() => handleSetAiProvider("huggingface")}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                      aiProvider === "huggingface"
-                        ? "bg-indigo-600 text-white shadow-xs"
-                        : "text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                    }`}
-                  >
-                    <Activity size={13} />
-                    <span>Hugging Face</span>
-                  </button>
+                  <Chip selected={aiProvider === "huggingface"} onClick={() => handleSetAiProvider("huggingface")}>
+                    <Activity className="size-3.5" /> Hugging Face
+                  </Chip>
                 )}
-                <button
-                  id="provider-runpod"
-                  type="button"
-                  onClick={() => handleSetAiProvider("runpod")}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                    aiProvider === "runpod"
-                      ? "bg-indigo-600 text-white shadow-xs"
-                      : "text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                  }`}
-                >
-                  <Cpu size={13} />
-                  <span>Model Mandiri RunPod</span>
-                </button>
+                <Chip selected={aiProvider === "runpod"} onClick={() => handleSetAiProvider("runpod")}>
+                  <Cpu className="size-3.5" /> Model Mandiri
+                </Chip>
               </div>
             </div>
             {aiProvider === "huggingface" && (
-              <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Model HF Router
-                </span>
-                <div className="flex bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 w-fit flex-wrap gap-1 font-sans">
-                  <button
-                    id="hf-model-openai"
-                    type="button"
-                    onClick={() => handleSetAiModel("openai-oss")}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                      aiModel === "openai-oss"
-                        ? "bg-emerald-600 text-white shadow-xs"
-                        : "text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400"
-                    }`}
-                  >
-                    <Wand2 size={13} />
-                    <span>OpenAI OSS</span>
-                  </button>
-                  <button
-                    id="hf-model-deepseek"
-                    type="button"
-                    onClick={() => handleSetAiModel("deepseek")}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                      aiModel === "deepseek"
-                        ? "bg-emerald-600 text-white shadow-xs"
-                        : "text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400"
-                    }`}
-                  >
-                    <Activity size={13} />
-                    <span>DeepSeek</span>
-                  </button>
+              <div className="mt-4 flex flex-col gap-2 border-t border-border/60 pt-4 sm:flex-row sm:items-center">
+                <span className="text-xs font-black uppercase tracking-wider text-text-muted">Model HF Router</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <Chip selected={aiModel === "openai-oss"} onClick={() => handleSetAiModel("openai-oss")}>
+                    <Wand2 className="size-3.5" /> OpenAI OSS
+                  </Chip>
+                  <Chip selected={aiModel === "deepseek"} onClick={() => handleSetAiModel("deepseek")}>
+                    <Activity className="size-3.5" /> DeepSeek
+                  </Chip>
                 </div>
               </div>
             )}
-          </div>
-
+          </Card>
         </div>
 
         {/* Column Left: Pre-loaded Demo presets & step forms (span 8) */}
-        <div className="lg:col-span-8 space-y-6" id="clinical-form-container">
-          
-          {/* Preset Buttons for demonstration */}
-          <div data-density="secondary" className={`p-4 rounded-2xl border ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} shadow-2xs`}>
-            <div className="flex items-center gap-1.5 mb-2.5">
-              <Microscope size={14} className="text-indigo-500" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Kasus Simulasi Triase (Uji Coba Cepat)</span>
+        <div className="space-y-6 lg:col-span-8" id="clinical-form-container">
+
+          <Card data-density="secondary" padding="sm">
+            <div className="mb-2.5 flex items-center gap-1.5">
+              <Microscope size={14} className="text-primary" />
+              <span className="text-xs font-bold uppercase tracking-wider text-text-muted">Kasus Simulasi Triase (Uji Coba Cepat)</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {MOCK_PRESETS.map((p, index) => (
-                <button
-                  id={`btn-preset-${index}`}
-                  key={index}
-                  type="button"
-                  onClick={() => handleAutoFillPreset(p)}
-                  className="px-2.5 py-1.5 text-[10px] font-extrabold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 dark:text-indigo-300 text-indigo-800 rounded-xl border border-indigo-200/40 cursor-pointer transition select-none"
-                >
-                  {p.name}
-                </button>
+              {MOCK_PRESETS.map((preset, index) => (
+                <Chip key={index} selected={false} onClick={() => handleAutoFillPreset(preset)}>
+                  {preset.name}
+                </Chip>
               ))}
             </div>
-          </div>
+          </Card>
 
-          {/* Clinician Form Progress Header Stepper */}
-          <div className={`${
-            displayMode === "accessible"
-              ? "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
-              : "standard-stepper flex snap-x gap-2 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:gap-3 md:overflow-visible md:pb-0 xl:grid-cols-6"
-          }`}>
-            {STEPS.map((step, idx) => {
-              const active = idx === activeStep;
-              const passed = idx < activeStep;
-              return (
-                <button
-                  id={`btn-step-nav-${idx}`}
-                  key={idx}
-                  onClick={() => setActiveStep(idx)}
-                  className={`${displayMode === "accessible" ? "min-h-24 p-3.5" : "min-h-20 min-w-36 snap-start p-3 md:min-w-0"} rounded-2xl border text-left transition-all cursor-pointer select-none h-full ${
-                    active
-                      ? "border-indigo-400 bg-linear-to-br from-indigo-50 to-violet-50 text-indigo-800 dark:from-indigo-950/60 dark:to-violet-950/40 dark:text-indigo-300 dark:border-indigo-600 shadow-md"
-                      : passed
-                      ? "border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400"
-                      : darkMode
-                      ? "border-slate-800 bg-slate-900/40 text-slate-500 hover:bg-slate-900"
-                      : "border-slate-200 bg-white/90 text-slate-600 hover:border-indigo-200 hover:shadow-sm"
-                  }`}
-                >
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-extrabold font-mono opacity-60">Langkah {idx + 1}</span>
-                    {passed && <span className="text-[9px] text-emerald-500 font-bold">✔</span>}
-                  </div>
-                  <h4 className="text-sm font-extrabold leading-snug mt-1">{step.label}</h4>
-                </button>
-              );
-            })}
-          </div>
+          <Stepper steps={STEPS} activeStep={activeStep} onStepClick={setActiveStep} accessible={displayMode === "accessible"} />
 
           {/* Nested step rendering */}
-          <div className="space-y-4">
-            {activeStep === 0 && (
-              <div key={form.id || form.nomorRM || "new-patient"}>
-                <IdentitasForm data={form} onChange={updateFormState} />
-              </div>
-            )}
-            {activeStep === 1 && (
-              <KeluhanAwalForm data={form} onChange={updateFormState} />
-            )}
-            {activeStep === 2 && (
-              <VitalSignForm data={form} onChange={updateFormState} />
-            )}
-            {activeStep === 3 && (
-              <NyeriForm data={form} onChange={updateFormState} />
-            )}
-            {activeStep === 4 && (
-              <SOAPFormView data={form} onChange={updateFormState} />
-            )}
-            {activeStep === 5 && (
-              <ATSHasilPanel data={form} onSave={handleSaveTriageLog} isSaving={isSaving} />
-            )}
-          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeStep}
+              variants={pageTransition}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="space-y-4"
+            >
+              {activeStep === 0 && (
+                <div key={form.id || form.nomorRM || "new-patient"}>
+                  <IdentitasForm data={form} onChange={updateFormState} />
+                </div>
+              )}
+              {activeStep === 1 && (
+                <KeluhanAwalForm data={form} onChange={updateFormState} />
+              )}
+              {activeStep === 2 && (
+                <VitalSignForm data={form} onChange={updateFormState} />
+              )}
+              {activeStep === 3 && (
+                <NyeriForm data={form} onChange={updateFormState} />
+              )}
+              {activeStep === 4 && (
+                <SOAPFormView data={form} onChange={updateFormState} />
+              )}
+              {activeStep === 5 && (
+                <ATSHasilPanel data={form} onSave={handleSaveTriageLog} isSaving={isSaving} />
+              )}
+            </motion.div>
+          </AnimatePresence>
 
           {/* Stepper Footer Action Controls */}
-          <div className="flex flex-col gap-3 pt-4 border-t border-slate-200 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-            <button
-              id="btn-stepper-back"
-              type="button"
-              disabled={activeStep === 0}
-              onClick={() => setActiveStep((prev) => Math.max(0, prev - 1))}
-              className={`flex items-center gap-1 px-4 py-2 text-xs font-bold rounded-xl border justify-center transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none ${
-                darkMode ? "border-slate-800 hover:bg-slate-900" : "border-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              <ArrowLeft size={14} />
-              <span>Kembali</span>
-            </button>
+          <div className="flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <Button variant="outline" size="sm" disabled={activeStep === 0} onClick={() => setActiveStep((prev) => Math.max(0, prev - 1))} leftIcon={<ArrowLeft className="size-3.5" />}>
+              Kembali
+            </Button>
 
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                id="btn-reset-current-form"
-                type="button"
-                onClick={handleResetForm}
-                className={`flex min-h-12 items-center gap-2 rounded-xl border-2 px-4 py-2 text-sm font-bold transition cursor-pointer hover:bg-rose-50 hover:text-rose-600 ${
-                  darkMode ? "border-slate-800 text-slate-400" : "border-slate-200 text-slate-500"
-                }`}
-                title="Kosongkan formulir dan masukkan pasien baru"
-              >
-                <RotateCcw size={18} />
-                <span>Data Pasien Baru / Reset</span>
-              </button>
+              <Button variant="ghost" size="sm" onClick={handleResetForm} leftIcon={<RotateCcw className="size-4" />} title="Kosongkan formulir dan masukkan pasien baru">
+                Data Pasien Baru / Reset
+              </Button>
 
-              {activeStep < 5 ? (
-                <button
-                  id="btn-stepper-next"
-                  type="button"
-                  onClick={() => setActiveStep((prev) => Math.min(STEPS.length - 1, prev + 1))}
-                  className="flex items-center gap-1 px-4 py-2 text-xs font-bold rounded-xl bg-slate-800 dark:bg-slate-100 dark:text-slate-900 text-white justify-center transition cursor-pointer"
+              {activeStep < 5 && (
+                <Button variant="primary" size="sm" onClick={() => setActiveStep((prev) => Math.min(STEPS.length - 1, prev + 1))} rightIcon={<ArrowRight className="size-3.5" />}>
+                  Selanjutnya
+                </Button>
+              )}
+
+              {!form.atsPrediction && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={isClassifying}
+                  loading={isClassifying}
+                  onClick={handleTriggerAISystem}
+                  leftIcon={!isClassifying ? <Wand2 className="size-4" /> : undefined}
                 >
-                  <span>Selanjutnya</span>
-                  <ArrowRight size={14} />
-                </button>
-              ) : null}
-
-              {/* Central Trigger Action Button that invokes the AI analysis schema */}
-              {!form.atsPrediction && <button
-                id="btn-action-ai-compute"
-                type="button"
-                disabled={isClassifying}
-                onClick={handleTriggerAISystem}
-                className="flex items-center gap-1.5 px-4.5 py-2 text-xs font-black rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md justify-center transition cursor-pointer disabled:opacity-50"
-              >
-                {isClassifying ? (
-                  <>
-                    <RefreshCw size={14} className="animate-spin" />
-                    <span>Menganalisis...</span>
-                  </>
-                ) : (
-                  <>
-                    <Wand2 size={14} />
-                    <span>Analisis ATS dengan AI</span>
-                  </>
-                )}
-              </button>}
+                  {isClassifying ? "Menganalisis..." : "Analisis ATS dengan AI"}
+                </Button>
+              )}
             </div>
           </div>
 
@@ -1078,93 +945,75 @@ export default function App() {
 
         {/* Column Right: Sticky Info Panels & Quick Clinical Help (span 4) */}
         <div className="hidden lg:col-span-4 lg:block lg:space-y-6">
-          
-          {/* Quick interactive clinician view about patient progress */}
-          <div className={`p-4 rounded-2xl border sticky top-24 ${darkMode ? "bg-slate-900/90 border-slate-800" : "bg-white border-slate-100"} shadow-sm space-y-4`}>
+
+          <Card padding="sm" className="sticky top-24 space-y-4">
             <div>
-              <h3 className="text-xs font-black text-slate-500 uppercase tracking-wider">Identitas Live-View</h3>
-              <div className="mt-2 text-xs space-y-2.5 font-semibold">
-                <div className="flex justify-between border-b pb-1 dark:border-slate-800">
-                  <span className="text-slate-400">Kode RM</span>
-                  <span className="font-mono text-indigo-500">{form.nomorRM || "Ketik Nomor RM..."}</span>
+              <h3 className="text-xs font-black uppercase tracking-wider text-text-muted">Identitas Live-View</h3>
+              <div className="mt-2 space-y-2.5 text-xs font-semibold">
+                <div className="flex justify-between border-b border-border/70 pb-1">
+                  <span className="text-text-muted">Kode RM</span>
+                  <span className="font-mono text-primary">{form.nomorRM || "Ketik Nomor RM..."}</span>
                 </div>
-                <div className="flex justify-between border-b pb-1 dark:border-slate-800">
-                  <span className="text-slate-400">Nama Pasien</span>
-                  <span className="truncate max-w-[140px] text-slate-800 dark:text-slate-200">{form.namaPasien || "Ketik Nama..."}</span>
+                <div className="flex justify-between border-b border-border/70 pb-1">
+                  <span className="text-text-muted">Nama Pasien</span>
+                  <span className="max-w-[140px] truncate text-text">{form.namaPasien || "Ketik Nama..."}</span>
                 </div>
-                <div className="flex justify-between border-b pb-1 dark:border-slate-800">
-                  <span className="text-slate-400">Cara Kedatangan</span>
-                  <span className="text-slate-700 dark:text-slate-300">{form.caraDatang}</span>
+                <div className="flex justify-between border-b border-border/70 pb-1">
+                  <span className="text-text-muted">Cara Kedatangan</span>
+                  <span className="text-text">{form.caraDatang}</span>
                 </div>
-                <div className="flex justify-between border-b pb-1 dark:border-slate-800">
-                  <span className="text-slate-400">Keluhan</span>
-                  <span className="text-rose-600 font-bold truncate max-w-[150px] text-right">
+                <div className="flex justify-between border-b border-border/70 pb-1">
+                  <span className="text-text-muted">Keluhan</span>
+                  <span className="max-w-[150px] truncate text-right font-bold text-danger">
                     {form.chiefComplaintCustom || form.chiefComplaint || "Belum diisi"}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className={`p-3 rounded-xl border space-y-3 ${
-              liveLevelDetails
-                ? "bg-indigo-50/70 border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900/40"
-                : "bg-slate-50 border-slate-200 dark:bg-slate-950/40 dark:border-slate-800"
-            }`}>
+            <div className={`space-y-3 rounded-xl border p-3 ${liveLevelDetails ? "border-primary/20 bg-primary/5" : "border-border bg-bg"}`}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
-                    Kondisi Pasien & ATS
-                  </span>
-                  <p className="mt-1 text-sm font-black text-slate-800 dark:text-slate-100">
-                    {liveLevelDetails ? liveLevelDetails.name : "ATS belum tersedia"}
-                  </p>
-                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                    {liveLevelDetails ? liveLevelDetails.timeLimit : "Klik Analisis ATS dengan AI"}
-                  </p>
+                  <span className="block text-xs font-black uppercase tracking-widest text-text-muted">Kondisi Pasien & ATS</span>
+                  <p className="mt-1 text-sm font-black text-text">{liveLevelDetails ? liveLevelDetails.name : "ATS belum tersedia"}</p>
+                  <p className="text-xs font-semibold text-text-muted">{liveLevelDetails ? liveLevelDetails.timeLimit : "Klik Analisis ATS dengan AI"}</p>
                 </div>
-                <span className={`px-2 py-1 rounded-lg text-[9px] font-black border shrink-0 ${
-                  liveHasOverride
-                    ? "bg-amber-50 text-amber-700 border-amber-200"
-                    : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                }`}>
+                <Badge tone={liveHasOverride ? "warning" : "secondary"} className="shrink-0">
                   {liveHasOverride ? "OVERRIDE" : liveProvider}
-                </span>
+                </Badge>
               </div>
-              <div className="rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-2.5">
-                <span className="text-[9px] block text-slate-400 font-bold uppercase tracking-wider">Gambaran Kondisi</span>
-                <p className="text-[11px] leading-relaxed font-semibold text-slate-700 dark:text-slate-200">
-                  {liveCondition}
-                </p>
+              <div className="rounded-lg border border-border/70 bg-surface p-2.5">
+                <span className="block text-xs font-bold uppercase tracking-wider text-text-muted">Gambaran Kondisi</span>
+                <p className="text-xs font-semibold leading-relaxed text-text">{liveCondition}</p>
               </div>
               {form.atsFinal?.namaPetugas && (
-                <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                  Validator: <strong className="text-slate-700 dark:text-slate-200">{form.atsFinal.namaPetugas}</strong>
+                <div className="text-xs font-semibold text-text-muted">
+                  Validator: <strong className="text-text">{form.atsFinal.namaPetugas}</strong>
                   {form.atsFinal.jabatanPetugas ? ` (${form.atsFinal.jabatanPetugas})` : ""}
                 </div>
               )}
             </div>
 
-            {/* Quick GCS reference summary */}
-            <div className="bg-slate-50 dark:bg-slate-950/40 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">GCS & Vitals Live-State</span>
-              <div className="grid grid-cols-2 gap-2 text-center text-xs text-slate-700 dark:text-slate-200">
-                <div className="p-1.5 bg-white dark:bg-slate-900 rounded-lg shadow-3xs">
-                  <span className="text-[9px] block text-slate-400 font-bold">Respirasi Rate</span>
-                  <span className={`font-black ${isRrCritical ? "text-rose-600" : "text-emerald-500"}`}>{rrDisplay}</span>
+            <div className="space-y-1.5 rounded-xl border border-border/70 bg-bg p-3">
+              <span className="block text-xs font-bold uppercase tracking-widest text-text-muted">GCS & Vitals Live-State</span>
+              <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                <div className="rounded-lg border border-border/60 bg-surface p-1.5">
+                  <span className="block text-xs font-bold text-text-muted">Respirasi Rate</span>
+                  <span className={`font-black ${isRrCritical ? "text-danger" : "text-secondary"}`}>{rrDisplay}</span>
                 </div>
-                <div className="p-1.5 bg-white dark:bg-slate-900 rounded-lg shadow-3xs">
-                  <span className="text-[9px] block text-slate-400 font-bold">Saturasi</span>
-                  <span className={`font-black ${spo2 < 90 && spo2 > 0 ? "text-rose-600" : "text-emerald-500"}`}>{spo2Display}</span>
+                <div className="rounded-lg border border-border/60 bg-surface p-1.5">
+                  <span className="block text-xs font-bold text-text-muted">Saturasi</span>
+                  <span className={`font-black ${spo2 < 90 && spo2 > 0 ? "text-danger" : "text-secondary"}`}>{spo2Display}</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Rekomendasi Tindakan</span>
+            <div className="space-y-2 rounded-xl border border-border/70 bg-surface p-3">
+              <span className="block text-xs font-bold uppercase tracking-widest text-text-muted">Rekomendasi Tindakan</span>
               <ul className="space-y-1.5">
                 {liveRecommendations.map((rec, index) => (
-                  <li key={index} className="flex items-start gap-2 text-[11px] font-semibold leading-relaxed text-slate-700 dark:text-slate-200">
-                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <li key={index} className="flex items-start gap-2 text-xs font-semibold leading-relaxed text-text">
+                    <span className="mt-1 size-1.5 shrink-0 rounded-full bg-secondary" />
                     <span>{rec}</span>
                   </li>
                 ))}
@@ -1172,46 +1021,50 @@ export default function App() {
             </div>
 
             {/* System Guideline quick reference sheet */}
-            <div data-density="secondary" className="p-4 bg-slate-50/85 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-xl space-y-3">
+            <div data-density="secondary" className="space-y-3 rounded-xl border border-border/70 bg-bg p-4">
               <div className="inline-flex items-center gap-1.5">
-                <Clock size={13} className="text-slate-400" />
-                <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Arah Standar Triase Australasia (ATS)</span>
+                <Clock size={13} className="text-text-muted" />
+                <span className="text-xs font-black uppercase tracking-wider text-text-muted">Arah Standar Triase Australasia (ATS)</span>
               </div>
-              
-              <div className="space-y-2 text-[10px] font-medium leading-relaxed">
-                <div className="flex gap-2 items-center">
-                  <span className="w-2.5 h-2.5 bg-red-600 rounded-full shrink-0"></span>
-                  <span className="text-slate-600 dark:text-slate-350"><strong className="text-slate-800 dark:text-slate-100">ATS 1 (Merah):</strong> Resusitasi total / segera</span>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <span className="w-2.5 h-2.5 bg-orange-500 rounded-full shrink-0"></span>
-                  <span className="text-slate-600 dark:text-slate-350"><strong className="text-slate-800 dark:text-slate-100">ATS 2 (Orange):</strong> Gawat darurat ≤ 10 menit</span>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <span className="w-2.5 h-2.5 bg-green-600 rounded-full shrink-0"></span>
-                  <span className="text-slate-600 dark:text-slate-350"><strong className="text-slate-800 dark:text-slate-100">ATS 3 (Hijau):</strong> Darurat ≤ 30 menit</span>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <span className="w-2.5 h-2.5 bg-blue-600 rounded-full shrink-0"></span>
-                  <span className="text-slate-600 dark:text-slate-350"><strong className="text-slate-800 dark:text-slate-100">ATS 4 (Biru):</strong> Ringan ≤ 60 menit</span>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <span className="w-2.5 h-2.5 bg-slate-400 rounded-full shrink-0"></span>
-                  <span className="text-slate-600 dark:text-slate-350"><strong className="text-slate-800 dark:text-slate-100">ATS 5 (Putih):</strong> Non-emergency ≤ 120 menit</span>
-                </div>
+              <div className="space-y-2 text-xs font-medium leading-relaxed">
+                {ATS_QUICK_REFERENCE.map((item) => (
+                  <div key={item.level} className="flex items-center gap-2">
+                    <span className={`size-2.5 shrink-0 rounded-full bg-ats-${item.level}`} />
+                    <span className="text-text-muted">
+                      <strong className="text-text">{ATS_LEVEL_DETAILS[item.level].name}:</strong> {item.label} ({item.limit})
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-          
+          </Card>
+
         </div>
         </>
         )}
-
+          </motion.div>
+        </AnimatePresence>
       </main>
       </div>
 
-      <nav className={`mobile-primary-nav fixed inset-x-2 bottom-3 z-50 grid ${isAdmin ? "grid-cols-5" : "grid-cols-4"} overflow-hidden rounded-2xl border border-white/70 bg-white/92 p-1.5 shadow-2xl shadow-slate-400/30 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/94 dark:shadow-none sm:inset-x-3 lg:hidden`} aria-label="Navigasi utama mobile">
-        {MAIN_NAV_ITEMS.map((item) => {
+      {/* Mobile Floating Action Button — jump into a new triage from any secondary view */}
+      {showFab && (
+        <motion.button
+          type="button"
+          onClick={() => { setView("triage"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileTap={{ scale: 0.92 }}
+          className="fixed bottom-22 right-4 z-40 flex size-14 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-accent text-white shadow-xl shadow-primary/30 lg:hidden"
+          aria-label="Mulai triase baru"
+          title="Mulai triase baru"
+        >
+          <Plus className="size-6" />
+        </motion.button>
+      )}
+
+      <nav className={`mobile-primary-nav fixed inset-x-2 bottom-3 z-50 grid ${isAdmin ? "grid-cols-5" : "grid-cols-4"} overflow-hidden rounded-2xl border border-border/70 bg-surface/92 p-1.5 shadow-2xl backdrop-blur-xl sm:inset-x-3 lg:hidden`} aria-label="Navigasi utama mobile">
+        {MAIN_NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => {
           const MobileIcon = item.icon;
           const active = view === item.id;
           return (
@@ -1220,9 +1073,7 @@ export default function App() {
               type="button"
               onClick={() => { setView(item.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs font-bold transition ${
-                active
-                  ? "bg-linear-to-br from-sky-700 to-teal-700 text-white shadow-md"
-                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                active ? "bg-linear-to-br from-primary to-accent text-white shadow-md" : "text-text-muted hover:bg-black/5 dark:hover:bg-white/8"
               }`}
               aria-current={active ? "page" : undefined}
             >
@@ -1231,27 +1082,10 @@ export default function App() {
             </button>
           );
         })}
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => { setView("users"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-            className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs font-bold transition ${
-              view === "users"
-                ? "bg-linear-to-br from-sky-700 to-teal-700 text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-            }`}
-            aria-current={view === "users" ? "page" : undefined}
-          >
-            <Users size={22} />
-            <span>Akun</span>
-          </button>
-        )}
       </nav>
 
       {/* Floating Status Bar Footer */}
-      <footer className={`fixed bottom-0 left-0 right-0 z-45 hidden border-t py-2 px-4 transition-all text-center text-[10px] lg:block ${
-        darkMode ? "bg-slate-900 text-slate-400 border-slate-800" : "bg-white text-slate-500 border-slate-200"
-      }`}>
+      <footer className="fixed inset-x-0 bottom-0 z-45 hidden border-t border-border/70 bg-surface px-4 py-2 text-center text-xs text-text-muted lg:block">
         <span>© 2026 E-Triase IGD ATS. Buatan untuk Sistem Pendukung Keputusan Triage Medis Darurat.</span>
       </footer>
 

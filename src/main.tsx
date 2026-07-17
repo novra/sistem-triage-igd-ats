@@ -4,6 +4,9 @@ import App from './App.tsx';
 import LoginPage from './components/LoginPage.tsx';
 import ChangePasswordModal from './components/ChangePasswordModal.tsx';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
+import { ToastProvider } from './components/ui/Toast.tsx';
+import { ConfirmProvider } from './components/ui/ConfirmDialog.tsx';
+import { TooltipProvider } from './components/ui/Tooltip.tsx';
 import './index.css';
 
 // App.tsx baru menerapkan class "dark" ke <html> setelah mount — terapkan lebih awal
@@ -45,8 +48,14 @@ function AuthGate() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider>
-      <AuthGate />
-    </AuthProvider>
+    <TooltipProvider>
+      <ToastProvider>
+        <ConfirmProvider>
+          <AuthProvider>
+            <AuthGate />
+          </AuthProvider>
+        </ConfirmProvider>
+      </ToastProvider>
+    </TooltipProvider>
   </StrictMode>,
 );

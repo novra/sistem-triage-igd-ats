@@ -193,40 +193,45 @@ export interface TriageRecord {
   createdByUserEmail?: string | null;
 }
 
+// Warna di sini memakai token --color-ats-1..5 (lihat src/index.css) — namespace
+// klinis terpisah dari palet UI generik, supaya hue (1=merah..5=netral) tidak
+// pernah ikut bergeser saat token brand/UI diubah. Hanya shade yang diselaraskan
+// di sini, bukan makna warnanya. ATS 5 punya varian dark mode (lihat .dark di
+// index.css) alih-alih putih solid seperti versi sebelumnya.
 export const ATS_LEVEL_DETAILS = {
   1: {
     name: "ATS 1 — Merah",
     subtitle: "Resusitasi / Segera",
-    color: "bg-red-600 text-white border-red-800",
-    badgeColor: "bg-red-100 text-red-800 border-red-300",
+    color: "bg-ats-1 text-ats-1-foreground border-white/15",
+    badgeColor: "bg-ats-1/10 text-ats-1 border-ats-1/30",
     timeLimit: "Segera (Immediate)",
   },
   2: {
     name: "ATS 2 — Orange",
     subtitle: "Gawat Darurat / High Alert",
-    color: "bg-orange-500 text-white border-orange-700",
-    badgeColor: "bg-orange-100 text-orange-800 border-orange-300",
+    color: "bg-ats-2 text-ats-2-foreground border-white/15",
+    badgeColor: "bg-ats-2/10 text-ats-2 border-ats-2/30",
     timeLimit: "≤ 10 menit",
   },
   3: {
     name: "ATS 3 — Hijau",
     subtitle: "Darurat / Urgent",
-    color: "bg-green-600 text-white border-green-800",
-    badgeColor: "bg-green-100 text-green-800 border-green-300",
+    color: "bg-ats-3 text-ats-3-foreground border-white/15",
+    badgeColor: "bg-ats-3/10 text-ats-3 border-ats-3/30",
     timeLimit: "≤ 30 menit",
   },
   4: {
     name: "ATS 4 — Biru",
     subtitle: "Semi-Darurat / Non-Urgent",
-    color: "bg-blue-600 text-white border-blue-800",
-    badgeColor: "bg-blue-100 text-blue-800 border-blue-300",
+    color: "bg-ats-4 text-ats-4-foreground border-white/15",
+    badgeColor: "bg-ats-4/10 text-ats-4 border-ats-4/30",
     timeLimit: "≤ 60 menit",
   },
   5: {
     name: "ATS 5 — Putih",
     subtitle: "Tidak Darurat / False Emergency",
-    color: "bg-white text-gray-900 border-gray-300 shadow",
-    badgeColor: "bg-gray-100 text-gray-800 border-gray-300",
+    color: "bg-ats-5 text-ats-5-foreground border-border",
+    badgeColor: "bg-black/5 text-text border-border dark:bg-white/10",
     timeLimit: "≤ 120 menit",
   },
 };

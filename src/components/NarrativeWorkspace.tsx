@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { CheckCircle2, ClipboardList, RefreshCw, RotateCcw, Wand2 } from "lucide-react";
+import { CheckCircle2, ClipboardList, RotateCcw, Wand2 } from "lucide-react";
 import { TriageRecord } from "../types";
 import { apiFetch } from "../lib/api";
 import IdentitasForm from "./IdentitasForm";
@@ -9,6 +9,9 @@ import NyeriForm from "./NyeriForm";
 import SOAPFormView from "./SOAPFormView";
 import ImportTriageRecords from "./ImportTriageRecords";
 import ATSHasilPanel from "./ATSHasilPanel";
+import { Card } from "./ui/Card";
+import { Button } from "./ui/Button";
+import { useConfirm } from "./ui/ConfirmDialog";
 
 interface NarrativeWorkspaceProps {
   initialRecord: TriageRecord;
@@ -37,6 +40,7 @@ export default function NarrativeWorkspace({
   setSuccessMsg,
   onRecordsChanged,
 }: NarrativeWorkspaceProps) {
+  const confirm = useConfirm();
   const [injectedRecord, setInjectedRecord] = useState<TriageRecord>(() => cloneRecord(initialRecord));
   const [activeSection, setActiveSection] = useState(0);
   const [hasInjectedData, setHasInjectedData] = useState(false);
@@ -64,8 +68,15 @@ export default function NarrativeWorkspace({
     });
   };
 
-  const handleReset = () => {
-    if (!confirm("Kosongkan data hasil penguraian dan mulai narasi baru?")) return;
+  const handleReset = async () => {
+    const confirmed = await confirm({
+      title: "Kosongkan hasil penguraian?",
+      description: "Data hasil penguraian narasi akan dihapus dan Anda bisa memulai narasi baru.",
+      confirmLabel: "Ya, kosongkan",
+      cancelLabel: "Batal",
+      tone: "danger",
+    });
+    if (!confirmed) return;
     setInjectedRecord(cloneRecord(initialRecord));
     setHasInjectedData(false);
     setActiveSection(0);
@@ -149,12 +160,12 @@ export default function NarrativeWorkspace({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-indigo-200 bg-indigo-50/70 p-5 dark:border-indigo-900 dark:bg-indigo-950/20">
-        <h2 className="text-2xl font-black text-slate-900 dark:text-white">Pengurai dan Pemilah Narasi Klinis</h2>
-        <p className="mt-2 text-base font-medium text-slate-600 dark:text-slate-300">
+      <Card padding="lg" className="border-primary/20 bg-primary/5">
+        <h2 className="text-2xl font-black text-text">Pengurai dan Pemilah Narasi Klinis</h2>
+        <p className="mt-2 text-base font-medium text-text-muted">
           Urai narasi bebas menjadi data terstruktur, periksa hasilnya, lalu lakukan analisis ATS dan simpan tanpa berpindah halaman.
         </p>
-      </div>
+      </Card>
 
       <ImportTriageRecords
         onApplyRecord={handleApplyRecord}
@@ -164,29 +175,28 @@ export default function NarrativeWorkspace({
         aiModel={aiModel}
       />
 
-      <section id="narrative-injected-form" className="scroll-mt-28 rounded-3xl border-2 border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6">
-        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+      <Card padding="lg" id="narrative-injected-form" className="scroll-mt-28">
+        <div className="flex flex-col gap-4 border-b border-border/70 pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <div className="rounded-2xl bg-indigo-100 p-3 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+            <div className="rounded-2xl bg-primary/10 p-3 text-primary">
               <ClipboardList size={26} />
             </div>
             <div>
-              <h3 className="text-xl font-black text-slate-900 dark:text-white">Formulir Hasil Suntikan Data</h3>
-              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+              <h3 className="text-xl font-black text-text">Formulir Hasil Suntikan Data</h3>
+              <p className="mt-1 text-sm font-medium text-text-muted">
                 {hasInjectedData
                   ? "Data hasil penguraian sudah dimasukkan. Periksa setiap bagian dan lakukan koreksi bila diperlukan."
                   : "Hasil penguraian akan muncul di sini tanpa berpindah ke Form Utama."}
               </p>
             </div>
           </div>
-          <button type="button" onClick={handleReset} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-rose-200 px-4 py-2 text-sm font-bold text-rose-700 transition hover:bg-rose-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/30">
-            <RotateCcw size={19} />
+          <Button variant="outline" className="border-danger/30 text-danger hover:bg-danger/5" onClick={handleReset} leftIcon={<RotateCcw size={19} />}>
             Reset Hasil
-          </button>
+          </Button>
         </div>
 
         {hasInjectedData && (
-          <div className="mt-5 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+          <div className="mt-5 flex items-center gap-2 rounded-2xl border border-secondary/30 bg-secondary/10 p-4 font-bold text-secondary">
             <CheckCircle2 size={21} className="shrink-0" />
             Data berhasil disuntikkan ke formulir halaman ini.
           </div>
@@ -194,7 +204,14 @@ export default function NarrativeWorkspace({
 
         <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {FORM_SECTIONS.map((label, index) => (
-            <button key={label} type="button" onClick={() => setActiveSection(index)} className={`min-h-16 rounded-2xl border-2 p-3 text-left text-sm font-black transition ${activeSection === index ? "border-indigo-500 bg-indigo-50 text-indigo-800 ring-2 ring-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-300 dark:ring-indigo-900" : "border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"}`}>
+            <button
+              key={label}
+              type="button"
+              onClick={() => setActiveSection(index)}
+              className={`min-h-16 rounded-2xl border-2 p-3 text-left text-sm font-black transition ${
+                activeSection === index ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-border bg-surface text-text-muted hover:border-primary/30"
+              }`}
+            >
               <span className="mb-1 block font-mono text-sm opacity-60">Bagian {index + 1}</span>
               {label}
             </button>
@@ -213,32 +230,34 @@ export default function NarrativeWorkspace({
           {activeSection === 4 && <SOAPFormView data={injectedRecord} onChange={updateRecord} />}
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-6 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-          <p className="max-w-2xl text-sm font-medium text-slate-600 dark:text-slate-300">
+        <div className="mt-6 flex flex-col gap-3 border-t border-border/70 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-2xl text-sm font-medium text-text-muted">
             Setelah seluruh data hasil pilahan diperiksa, jalankan analisis ATS. Hasil tetap wajib divalidasi oleh dokter atau perawat.
           </p>
           {!injectedRecord.atsPrediction && (
-            <button
-              type="button"
-              onClick={handleAnalyze}
+            <Button
+              variant="secondary"
+              size="lg"
               disabled={isClassifying || !hasInjectedData}
-              className="flex min-h-14 shrink-0 items-center justify-center gap-2 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 px-6 py-3 text-base font-extrabold text-white shadow-lg shadow-emerald-200 transition hover:from-emerald-700 hover:to-teal-700 disabled:cursor-not-allowed disabled:opacity-50 dark:shadow-none"
+              loading={isClassifying}
+              onClick={handleAnalyze}
+              leftIcon={!isClassifying ? <Wand2 size={20} /> : undefined}
+              className="shrink-0"
             >
-              {isClassifying ? <RefreshCw size={22} className="animate-spin" /> : <Wand2 size={22} />}
               {isClassifying ? "Menganalisis..." : "Analisis ATS dengan AI"}
-            </button>
+            </Button>
           )}
         </div>
-      </section>
+      </Card>
 
       {injectedRecord.atsPrediction && (
         <section id="narrative-analysis-result" className="scroll-mt-28">
-          <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/25">
-            <h3 className="text-xl font-extrabold text-emerald-900 dark:text-emerald-200">Hasil Analisis ATS dari Narasi</h3>
-            <p className="mt-1 text-sm font-medium text-emerald-800 dark:text-emerald-300">
+          <Card padding="lg" className="mb-4 border-secondary/30 bg-secondary/5">
+            <h3 className="text-xl font-extrabold text-secondary">Hasil Analisis ATS dari Narasi</h3>
+            <p className="mt-1 text-sm font-medium text-text-muted">
               Periksa rekomendasi, isi validator, lalu simpan hasil ke database dari panel berikut.
             </p>
-          </div>
+          </Card>
           <ATSHasilPanel data={injectedRecord} onSave={handleSave} isSaving={isSaving} />
         </section>
       )}

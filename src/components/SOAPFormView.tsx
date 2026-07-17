@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { TriageRecord, PemeriksaanFisik } from "../types";
 import { BookOpen, Activity, FileText } from "lucide-react";
+import { Card } from "./ui/Card";
+import { Badge } from "./ui/Badge";
 
 interface SOAPFormViewProps {
   data: TriageRecord;
@@ -66,6 +68,15 @@ const INITIAL_PHYSICAL_EXAM: PemeriksaanFisik = {
   },
 };
 
+const EXAM_REGIONS: Array<{ key: keyof PemeriksaanFisik; label: string; idPrefix: string }> = [
+  { key: "kepala", label: "Kepala", idPrefix: "kepala" },
+  { key: "leher", label: "Leher", idPrefix: "leher" },
+  { key: "dada", label: "Dada / Paru / Jantung", idPrefix: "dada" },
+  { key: "perut", label: "Abdomen (Perut)", idPrefix: "perut" },
+  { key: "ekstremitasAtas", label: "Ekstremitas Atas", idPrefix: "atas" },
+  { key: "ekstremitasBawah", label: "Ekstremitas Bawah", idPrefix: "bawah" },
+];
+
 export default function SOAPFormView({ data, onChange }: SOAPFormViewProps) {
   const [exam, setExam] = useState<PemeriksaanFisik>(() => {
     return data.pemeriksaanFisik || INITIAL_PHYSICAL_EXAM;
@@ -96,340 +107,130 @@ export default function SOAPFormView({ data, onChange }: SOAPFormViewProps) {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in" id="soap-view-section">
-      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs">
-        <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-          <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+    <div className="space-y-4" id="soap-view-section">
+      <Card padding="md">
+        <div className="mb-4 flex items-center gap-2.5 border-b border-border/70 pb-3">
+          <div className="rounded-lg bg-primary/10 p-1.5 text-primary">
             <FileText size={18} />
           </div>
-          <h2 className="text-md font-semibold text-slate-800">1. S — Subjective (Ringkasan Pengisian Medis S)</h2>
+          <h2 className="text-sm font-bold text-text">1. S — Subjective (Ringkasan Pengisian Medis S)</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-medium">
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-            <span className="text-slate-500 block uppercase font-bold tracking-wider">Keluhan Utama</span>
-            <span className="text-slate-800 text-sm font-semibold">{data.chiefComplaint || "Belum dipilih"}</span>
+        <div className="grid grid-cols-1 gap-4 text-xs font-medium md:grid-cols-3">
+          <div className="space-y-1 rounded-xl border border-border/70 bg-bg p-3">
+            <span className="block text-xs font-bold uppercase tracking-wider text-text-muted">Keluhan Utama</span>
+            <span className="text-sm font-semibold text-text">{data.chiefComplaint || "Belum dipilih"}</span>
             {data.chiefComplaintCustom && (
-              <p className="text-[11px] text-slate-600 italic bg-white p-1.5 rounded-lg border mt-1">
-                "{data.chiefComplaintCustom}"
-              </p>
+              <p className="mt-1 rounded-lg border border-border/60 bg-surface p-1.5 text-xs italic text-text-muted">"{data.chiefComplaintCustom}"</p>
             )}
           </div>
 
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-            <span className="text-slate-500 block uppercase font-bold tracking-wider">Riwayat Penyakit</span>
+          <div className="space-y-1 rounded-xl border border-border/70 bg-bg p-3">
+            <span className="block text-xs font-bold uppercase tracking-wider text-text-muted">Riwayat Penyakit</span>
             <div className="flex flex-wrap gap-1 pt-1">
               {data.riwayatPenyakit && data.riwayatPenyakit.length > 0 ? (
                 data.riwayatPenyakit.map((h, i) => (
-                  <span key={i} className="px-1.5 py-0.5 bg-sky-100 text-sky-800 rounded-md text-[10px] font-semibold">
+                  <Badge key={i} tone="primary" className="rounded-md px-1.5 py-0.5 text-xs">
                     {h}
-                  </span>
+                  </Badge>
                 ))
               ) : (
-                <span className="text-slate-400">Tidak ada riwayat.</span>
+                <span className="text-text-muted">Tidak ada riwayat.</span>
               )}
               {data.riwayatPenyakitLainnya && (
-                <span className="text-slate-500 text-[10px] block w-full mt-1">Ket: {data.riwayatPenyakitLainnya}</span>
+                <span className="mt-1 block w-full text-xs text-text-muted">Ket: {data.riwayatPenyakitLainnya}</span>
               )}
             </div>
           </div>
 
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-            <span className="text-slate-500 block uppercase font-bold tracking-wider">Gejala Tambahan</span>
+          <div className="space-y-1 rounded-xl border border-border/70 bg-bg p-3">
+            <span className="block text-xs font-bold uppercase tracking-wider text-text-muted">Gejala Tambahan</span>
             <div className="flex flex-wrap gap-1 pt-1">
               {data.gejalaTambahan && data.gejalaTambahan.length > 0 ? (
                 data.gejalaTambahan.map((g, i) => (
-                  <span key={i} className="px-1.5 py-0.5 bg-rose-100 text-rose-800 rounded-md text-[10px] font-semibold">
+                  <Badge key={i} tone="danger" className="rounded-md px-1.5 py-0.5 text-xs">
                     {g}
-                  </span>
+                  </Badge>
                 ))
               ) : (
-                <span className="text-slate-400">Tidak terdeteksi gejala penyerta.</span>
+                <span className="text-text-muted">Tidak terdeteksi gejala penyerta.</span>
               )}
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
-      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs">
-        <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-          <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+      <Card padding="md">
+        <div className="mb-4 flex items-center gap-2.5 border-b border-border/70 pb-3">
+          <div className="rounded-lg bg-secondary/10 p-1.5 text-secondary">
             <Activity size={18} />
           </div>
-          <h2 className="text-md font-semibold text-slate-800">2. O — Objective: A. Vital Sign Summary</h2>
+          <h2 className="text-sm font-bold text-text">2. O — Objective: A. Vital Sign Summary</h2>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-center">
-          <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">Tekanan Darah</span>
-            <span className="text-sm font-black text-slate-700">
-              {data.vitalSign?.tekananDarahSistolik || 120}/{data.vitalSign?.tekananDarahDiastolik || 80} <span className="text-[10px] font-normal">mmHg</span>
-            </span>
-          </div>
-
-          <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">Nadi (HR)</span>
-            <span className="text-sm font-black text-slate-700">
-              {data.vitalSign?.heartRate || 80} <span className="text-[10px] font-normal">x/m</span>
-            </span>
-          </div>
-
-          <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">Respirasi (RR)</span>
-            <span className="text-sm font-black text-slate-700">
-              {data.vitalSign?.respiratoryRate || 18} <span className="text-[10px] font-normal">x/m</span>
-            </span>
-          </div>
-
-          <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">Suhu Tubuh</span>
-            <span className="text-sm font-black text-slate-700">
-              {data.vitalSign?.suhuTubuh || 36.5} <span className="text-[10px] font-normal">°C</span>
-            </span>
-          </div>
-
-          <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">Saturasi O2</span>
-            <span className="text-sm font-black text-slate-700">
-              {data.vitalSign?.saturasiOksigen || 98} <span className="text-[10px] font-normal">%</span>
-            </span>
-          </div>
-
-          <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">GCS Total</span>
-            <span className="text-sm font-black text-slate-700">
-              {(data.vitalSign?.gcs?.eye || 4) + (data.vitalSign?.gcs?.verbal || 5) + (data.vitalSign?.gcs?.motor || 6)}
-            </span>
-          </div>
+        <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-3 md:grid-cols-6">
+          {[
+            { label: "Tekanan Darah", value: `${data.vitalSign?.tekananDarahSistolik || 120}/${data.vitalSign?.tekananDarahDiastolik || 80}`, unit: "mmHg" },
+            { label: "Nadi (HR)", value: data.vitalSign?.heartRate || 80, unit: "x/m" },
+            { label: "Respirasi (RR)", value: data.vitalSign?.respiratoryRate || 18, unit: "x/m" },
+            { label: "Suhu Tubuh", value: data.vitalSign?.suhuTubuh || 36.5, unit: "°C" },
+            { label: "Saturasi O2", value: data.vitalSign?.saturasiOksigen || 98, unit: "%" },
+            { label: "GCS Total", value: (data.vitalSign?.gcs?.eye || 4) + (data.vitalSign?.gcs?.verbal || 5) + (data.vitalSign?.gcs?.motor || 6), unit: "" },
+          ].map((item) => (
+            <div key={item.label} className="rounded-xl border border-border/70 bg-bg p-2">
+              <span className="block text-xs font-bold uppercase text-text-muted">{item.label}</span>
+              <span className="text-sm font-black text-text">
+                {item.value} <span className="text-xs font-normal">{item.unit}</span>
+              </span>
+            </div>
+          ))}
         </div>
-      </div>
+      </Card>
 
-      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs">
-        <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-          <div className="p-1.5 bg-violet-50 text-violet-600 rounded-lg">
+      <Card padding="md">
+        <div className="mb-4 flex items-center gap-2.5 border-b border-border/70 pb-3">
+          <div className="rounded-lg bg-accent/10 p-1.5 text-accent">
             <BookOpen size={18} />
           </div>
-          <h2 className="text-md font-semibold text-slate-800">3. O — Objective: B. Pemeriksaan Fisik Terstruktur</h2>
+          <h2 className="text-sm font-bold text-text">3. O — Objective: B. Pemeriksaan Fisik Terstruktur</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* kepala */}
-          <div className="border border-slate-200 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
-            <div className="flex items-center justify-between border-b pb-1.5">
-              <span className="text-xs font-bold text-slate-700 uppercase">Kepala</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getActiveCount("kepala") > 0 ? "bg-rose-150 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
-                {getActiveCount("kepala")} Temuan
-              </span>
-            </div>
-            <div className="grid grid-cols-1 gap-1">
-              {Object.keys(INITIAL_PHYSICAL_EXAM.kepala).map((field) => {
-                const active = (exam.kepala as any)[field];
-                return (
-                  <button
-                    id={`btn-exam-kepala-${field}`}
-                    key={field}
-                    type="button"
-                    onClick={() => toggleCheck("kepala", field)}
-                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-left cursor-pointer transition select-none ${
-                      active
-                        ? "bg-rose-50 border-rose-300 text-rose-800"
-                        : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className="text-[10px] font-medium leading-none">{formatCamelKey(field)}</span>
-                    <input
-                      type="checkbox"
-                      checked={active}
-                      readOnly
-                      className="accent-rose-500 scale-75"
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* leher */}
-          <div className="border border-slate-200 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
-            <div className="flex items-center justify-between border-b pb-1.5">
-              <span className="text-xs font-bold text-slate-700 uppercase">Leher</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getActiveCount("leher") > 0 ? "bg-rose-150 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
-                {getActiveCount("leher")} Temuan
-              </span>
-            </div>
-            <div className="grid grid-cols-1 gap-1">
-              {Object.keys(INITIAL_PHYSICAL_EXAM.leher).map((field) => {
-                const active = (exam.leher as any)[field];
-                return (
-                  <button
-                    id={`btn-exam-leher-${field}`}
-                    key={field}
-                    type="button"
-                    onClick={() => toggleCheck("leher", field)}
-                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-left cursor-pointer transition select-none ${
-                      active
-                        ? "bg-rose-50 border-rose-300 text-rose-800"
-                        : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className="text-[10px] font-medium leading-none">{formatCamelKey(field)}</span>
-                    <input
-                      type="checkbox"
-                      checked={active}
-                      readOnly
-                      className="accent-rose-500 scale-75"
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* dada */}
-          <div className="border border-slate-200 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
-            <div className="flex items-center justify-between border-b pb-1.5">
-              <span className="text-xs font-bold text-slate-700 uppercase">Dada / Paru / Jantung</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getActiveCount("dada") > 0 ? "bg-rose-150 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
-                {getActiveCount("dada")} Temuan
-              </span>
-            </div>
-            <div className="grid grid-cols-1 gap-1">
-              {Object.keys(INITIAL_PHYSICAL_EXAM.dada).map((field) => {
-                const active = (exam.dada as any)[field];
-                return (
-                  <button
-                    id={`btn-exam-dada-${field}`}
-                    key={field}
-                    type="button"
-                    onClick={() => toggleCheck("dada", field)}
-                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-left cursor-pointer transition select-none ${
-                      active
-                        ? "bg-rose-50 border-rose-300 text-rose-800"
-                        : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className="text-[10px] font-medium leading-none">{formatCamelKey(field)}</span>
-                    <input
-                      type="checkbox"
-                      checked={active}
-                      readOnly
-                      className="accent-rose-500 scale-75"
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* perut */}
-          <div className="border border-slate-200 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
-            <div className="flex items-center justify-between border-b pb-1.5">
-              <span className="text-xs font-bold text-slate-700 uppercase">Abdomen (Perut)</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getActiveCount("perut") > 0 ? "bg-rose-150 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
-                {getActiveCount("perut")} Temuan
-              </span>
-            </div>
-            <div className="grid grid-cols-1 gap-1">
-              {Object.keys(INITIAL_PHYSICAL_EXAM.perut).map((field) => {
-                const active = (exam.perut as any)[field];
-                return (
-                  <button
-                    id={`btn-exam-perut-${field}`}
-                    key={field}
-                    type="button"
-                    onClick={() => toggleCheck("perut", field)}
-                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-left cursor-pointer transition select-none ${
-                      active
-                        ? "bg-rose-50 border-rose-300 text-rose-800"
-                        : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className="text-[10px] font-medium leading-none">{formatCamelKey(field)}</span>
-                    <input
-                      type="checkbox"
-                      checked={active}
-                      readOnly
-                      className="accent-rose-500 scale-75"
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ekstremitas atas */}
-          <div className="border border-slate-200 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
-            <div className="flex items-center justify-between border-b pb-1.5">
-              <span className="text-xs font-bold text-slate-700 uppercase">Ekstremitas Atas</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getActiveCount("ekstremitasAtas") > 0 ? "bg-rose-150 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
-                {getActiveCount("ekstremitasAtas")} Temuan
-              </span>
-            </div>
-            <div className="grid grid-cols-1 gap-1">
-              {Object.keys(INITIAL_PHYSICAL_EXAM.ekstremitasAtas).map((field) => {
-                const active = (exam.ekstremitasAtas as any)[field];
-                return (
-                  <button
-                    id={`btn-exam-atas-${field}`}
-                    key={field}
-                    type="button"
-                    onClick={() => toggleCheck("ekstremitasAtas", field)}
-                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-left cursor-pointer transition select-none ${
-                      active
-                        ? "bg-rose-50 border-rose-300 text-rose-800"
-                        : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className="text-[10px] font-medium leading-none">{formatCamelKey(field)}</span>
-                    <input
-                      type="checkbox"
-                      checked={active}
-                      readOnly
-                      className="accent-rose-500 scale-75"
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ekstremitas bawah */}
-          <div className="border border-slate-200 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
-            <div className="flex items-center justify-between border-b pb-1.5">
-              <span className="text-xs font-bold text-slate-700 uppercase">Ekstremitas Bawah</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getActiveCount("ekstremitasBawah") > 0 ? "bg-rose-150 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
-                {getActiveCount("ekstremitasBawah")} Temuan
-              </span>
-            </div>
-            <div className="grid grid-cols-1 gap-1">
-              {Object.keys(INITIAL_PHYSICAL_EXAM.ekstremitasBawah).map((field) => {
-                const active = (exam.ekstremitasBawah as any)[field];
-                return (
-                  <button
-                    id={`btn-exam-bawah-${field}`}
-                    key={field}
-                    type="button"
-                    onClick={() => toggleCheck("ekstremitasBawah", field)}
-                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-left cursor-pointer transition select-none ${
-                      active
-                        ? "bg-rose-50 border-rose-300 text-rose-800"
-                        : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className="text-[10px] font-medium leading-none">{formatCamelKey(field)}</span>
-                    <input
-                      type="checkbox"
-                      checked={active}
-                      readOnly
-                      className="accent-rose-500 scale-75"
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {EXAM_REGIONS.map((region) => {
+            const activeCount = getActiveCount(region.key);
+            return (
+              <div key={region.key} className="space-y-2.5 rounded-xl border border-border/70 p-3.5">
+                <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
+                  <span className="text-xs font-bold uppercase text-text">{region.label}</span>
+                  <Badge tone={activeCount > 0 ? "danger" : "neutral"} className="px-2 py-0.5 text-xs">
+                    {activeCount} Temuan
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-1 gap-1">
+                  {Object.keys(INITIAL_PHYSICAL_EXAM[region.key]).map((field) => {
+                    const active = (exam[region.key] as any)[field];
+                    return (
+                      <button
+                        id={`btn-exam-${region.idPrefix}-${field}`}
+                        key={field}
+                        type="button"
+                        onClick={() => toggleCheck(region.key, field)}
+                        aria-pressed={active}
+                        className={`flex items-center justify-between rounded-lg border px-2.5 py-1.5 text-left transition ${
+                          active ? "border-danger/40 bg-danger/10 text-danger" : "border-border/60 bg-surface text-text-muted hover:bg-bg"
+                        }`}
+                      >
+                        <span className="text-xs font-medium leading-none">{formatCamelKey(field)}</span>
+                        <span className={`size-3.5 shrink-0 rounded-sm border-2 ${active ? "border-danger bg-danger" : "border-border"}`} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

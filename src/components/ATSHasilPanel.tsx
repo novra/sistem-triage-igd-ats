@@ -2,11 +2,16 @@ import React, { useState, useEffect } from "react";
 import { TriageRecord, ATS_LEVEL_DETAILS } from "../types";
 import { ShieldAlert, AlertCircle, Save, Activity, CheckCircle2, UserCheck, Bot, Scale, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "./ui/Toast";
+import { Card } from "./ui/Card";
+import { Badge } from "./ui/Badge";
+import { Button } from "./ui/Button";
+import { Input, SelectField, TextareaField } from "./ui/Input";
 
 interface ATSHasilPanelProps {
   data: TriageRecord;
-  onSave: (overrideData?: { 
-    atsLevelOverride?: 1 | 2 | 3 | 4 | 5; 
+  onSave: (overrideData?: {
+    atsLevelOverride?: 1 | 2 | 3 | 4 | 5;
     alasanOverride?: string;
     namaPetugas?: string;
     jabatanPetugas?: string;
@@ -16,6 +21,7 @@ interface ATSHasilPanelProps {
 
 export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelProps) {
   const { user } = useAuth();
+  const toast = useToast();
   const [overrideLevel, setOverrideLevel] = useState<number | "">("");
   const [reasonOverride, setReasonOverride] = useState("");
   const [showOverride, setShowOverride] = useState(false);
@@ -61,17 +67,17 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
 
   if (!prediction) {
     return (
-      <div className="bg-white p-6 rounded-2xl border border-dashed border-slate-200 text-center py-12 space-y-3 shadow-xs">
-        <div className="w-12 h-12 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+      <Card padding="lg" className="border-dashed py-12 text-center">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-bg text-text-muted">
           <Activity size={24} className="animate-pulse" />
         </div>
-        <div>
-          <h3 className="text-sm font-semibold text-slate-700">Analisis ATS Belum Dimulai</h3>
-          <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">
-            Selesaikan pengisian data pasien, keluhan utama, dan tanda vital lalu klik tombol **"Analisis ATS dengan AI"**.
+        <div className="mt-3">
+          <h3 className="text-sm font-bold text-text">Analisis ATS Belum Dimulai</h3>
+          <p className="mx-auto mt-1 max-w-xs text-xs text-text-muted">
+            Selesaikan pengisian data pasien, keluhan utama, dan tanda vital lalu klik tombol <strong>"Analisis ATS dengan AI"</strong>.
           </p>
         </div>
-      </div>
+      </Card>
     );
   }
 
@@ -90,10 +96,10 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
 
   const handleTriggerSave = () => {
     if (!namaPetugas.trim()) {
-      alert("Harap isi Nama Tenaga Kesehatan terlebih dahulu.");
+      toast.error("Harap isi Nama Tenaga Kesehatan terlebih dahulu.");
       return;
     }
-    
+
     const payload: {
       atsLevelOverride?: 1 | 2 | 3 | 4 | 5;
       alasanOverride?: string;
@@ -134,216 +140,188 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
     });
   };
 
+  const saveDisabled = isSaving || (showOverride && !reasonOverride) || !namaPetugas.trim();
+
   return (
-    <div className="space-y-6 animate-fade-in" id="ats-hasil-panel-container">
+    <div className="space-y-4" id="ats-hasil-panel-container">
       {/* Disclaimer Banner */}
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3 shadow-3xs">
-        <ShieldAlert size={20} className="text-amber-600 shrink-0 mt-0.5" />
+      <div className="flex gap-3 rounded-2xl border border-warning/30 bg-warning/10 p-4">
+        <ShieldAlert size={20} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
         <div>
-          <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wide">⚠️ BUKAN REKOMENDASI KLINIS FINAL (BETA VERSION)</h4>
-          <p className="text-[11px] text-amber-700 leading-relaxed font-medium mt-0.5">
+          <h4 className="text-xs font-bold uppercase tracking-wide text-amber-900 dark:text-amber-300">Bukan Rekomendasi Klinis Final (Beta Version)</h4>
+          <p className="mt-0.5 text-xs font-medium leading-relaxed text-amber-800 dark:text-amber-400">
             Sistem triase ini masih berada dalam tahap beta/research prototype (clinical decision support). Hasil prediksi AI bersifat menunjang dan wajib diverifikasi oleh dokter/perawat triase IGD penanggung jawab.
           </p>
         </div>
       </div>
 
       {/* Main Color Coded Result Panel */}
-      <div className={`rounded-3xl border p-6 transition-all shadow-md ${levelDetails.color}`}>
+      <div className={`rounded-3xl border p-6 shadow-md transition-all ${levelDetails.color}`}>
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold tracking-wider opacity-90 font-mono flex items-center gap-1.5 flex-wrap">
+            <span className="flex flex-wrap items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-wider opacity-90">
               <span>HASIL ATS AKTIF</span>
               {prediction.providerUsed && (
-                <span className="px-1.5 py-0.5 bg-black/30 rounded text-[9px] font-black tracking-widest text-yellow-300">
-                  VIA {prediction.providerUsed}
-                </span>
+                <span className="rounded bg-black/30 px-1.5 py-0.5 text-xs font-black tracking-widest text-yellow-300">VIA {prediction.providerUsed}</span>
               )}
               {prediction.modelUsed && (
-                <span className="px-1.5 py-0.5 bg-black/25 rounded text-[9px] font-black tracking-widest">
-                  MODEL {prediction.modelUsed}
-                </span>
+                <span className="rounded bg-black/25 px-1.5 py-0.5 text-xs font-black tracking-widest">MODEL {prediction.modelUsed}</span>
               )}
             </span>
-            <h2 className="text-2xl font-black leading-tight">
-              {levelDetails.name}
-            </h2>
-            <p className="text-sm font-bold opacity-90">
-              {levelDetails.subtitle}
-            </p>
+            <h2 className="text-2xl font-black leading-tight">{levelDetails.name}</h2>
+            <p className="text-sm font-bold opacity-90">{levelDetails.subtitle}</p>
           </div>
 
-          <div className="bg-white/15 px-3.5 py-2 rounded-xl border border-white/20 text-center font-mono">
-            <span className="text-[9px] uppercase font-bold tracking-wide block leading-none">Confidence</span>
+          <div className="rounded-xl border border-white/20 bg-white/15 px-3.5 py-2 text-center font-mono">
+            <span className="block text-xs font-bold uppercase leading-none tracking-wide">Confidence</span>
             <span className="text-xl font-black">{prediction.confidenceScore}%</span>
           </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-2 gap-2 text-xs">
-          <div className="bg-white/10 p-2.5 rounded-xl border border-white/5">
-            <span className="opacity-75 block text-[10px] font-bold">Batas Waktu Penanganan</span>
-            <span className="font-extrabold text-sm">{levelDetails.timeLimit}</span>
+        <div className="mt-4 grid grid-cols-2 gap-2 border-t border-white/10 pt-4 text-xs">
+          <div className="rounded-xl border border-white/5 bg-white/10 p-2.5">
+            <span className="block text-xs font-bold opacity-75">Batas Waktu Penanganan</span>
+            <span className="text-sm font-extrabold">{levelDetails.timeLimit}</span>
           </div>
-          <div className="bg-white/10 p-2.5 rounded-xl border border-white/5">
-            <span className="opacity-75 block text-[10px] font-bold">Indikator Emergency</span>
-            <span className="font-extrabold text-sm">{prediction.emergencyIndicator ? "🚨 Gawat Darurat" : "Stabil / Low Risk"}</span>
+          <div className="rounded-xl border border-white/5 bg-white/10 p-2.5">
+            <span className="block text-xs font-bold opacity-75">Indikator Emergency</span>
+            <span className="text-sm font-extrabold">{prediction.emergencyIndicator ? "Gawat Darurat" : "Stabil / Low Risk"}</span>
           </div>
         </div>
       </div>
 
       {showIndependentModelComparison && decisionSupport && (
-        <section className="rounded-3xl border-2 border-amber-300 bg-linear-to-br from-amber-50 via-white to-indigo-50 p-5 shadow-md" aria-labelledby="recommendation-comparison-title">
+        <Card padding="lg" className="border-warning/40" aria-labelledby="recommendation-comparison-title">
           <div className="mb-4 flex items-start gap-3">
-            <div className="rounded-2xl bg-amber-100 p-3 text-amber-800">
+            <div className="rounded-2xl bg-warning/15 p-3 text-amber-800 dark:text-amber-400">
               <Scale size={24} />
             </div>
             <div>
-              <h3 id="recommendation-comparison-title" className="text-lg font-black text-slate-900">Rekomendasi AI dan Guard Rail Berbeda</h3>
-              <p className="mt-1 text-sm font-medium text-slate-600">
+              <h3 id="recommendation-comparison-title" className="text-lg font-black text-text">Rekomendasi AI dan Guard Rail Berbeda</h3>
+              <p className="mt-1 text-sm font-medium text-text-muted">
                 Bandingkan kedua sumber berikut. Keduanya merupakan data pendukung; keputusan ATS final tetap ditetapkan dan divalidasi oleh nakes.
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <article className="rounded-2xl border border-indigo-200 bg-white p-5 shadow-sm">
+            <Card padding="md" className="border-primary/20">
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-indigo-800">
+                <div className="flex items-center gap-2 text-primary">
                   <Bot size={20} />
                   <h4 className="font-black">Rekomendasi Model Mandiri</h4>
                 </div>
-                <span className="rounded-xl bg-indigo-700 px-3 py-1.5 text-sm font-black text-white">ATS {decisionSupport.aiRecommendation.atsLevel}</span>
+                <Badge tone="primary" className="rounded-xl px-3 py-1.5 text-sm">ATS {decisionSupport.aiRecommendation.atsLevel}</Badge>
               </div>
-              <p className="mt-3 text-base font-black text-slate-900">{ATS_LEVEL_DETAILS[decisionSupport.aiRecommendation.atsLevel].name}</p>
-              <p className="text-sm font-bold text-slate-500">Confidence AI {decisionSupport.aiRecommendation.confidenceScore}%</p>
-              <p className="mt-3 text-sm font-medium leading-relaxed text-slate-700">{decisionSupport.aiRecommendation.alasanKlasifikasi}</p>
-              <button
-                type="button"
-                onClick={() => chooseRecommendation("ai", decisionSupport.aiRecommendation.atsLevel)}
-                className="mt-4 w-full rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-3 font-black text-indigo-800 hover:bg-indigo-100"
-              >
+              <p className="mt-3 text-base font-black text-text">{ATS_LEVEL_DETAILS[decisionSupport.aiRecommendation.atsLevel].name}</p>
+              <p className="text-sm font-bold text-text-muted">Confidence AI {decisionSupport.aiRecommendation.confidenceScore}%</p>
+              <p className="mt-3 text-sm font-medium leading-relaxed text-text">{decisionSupport.aiRecommendation.alasanKlasifikasi}</p>
+              <Button variant="outline" fullWidth className="mt-4" onClick={() => chooseRecommendation("ai", decisionSupport.aiRecommendation.atsLevel)}>
                 Tetapkan ATS {decisionSupport.aiRecommendation.atsLevel} sebagai Keputusan Nakes
-              </button>
-            </article>
+              </Button>
+            </Card>
 
-            <article className="rounded-2xl border border-amber-300 bg-white p-5 shadow-sm">
+            <Card padding="md" className="border-warning/40">
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-amber-800">
+                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-400">
                   <ShieldCheck size={20} />
                   <h4 className="font-black">Saran Guard Rail Rule-Based</h4>
                 </div>
-                <span className="rounded-xl bg-amber-500 px-3 py-1.5 text-sm font-black text-slate-950">ATS {decisionSupport.guardRailRecommendation.atsLevel}</span>
+                <Badge tone="warning" className="rounded-xl px-3 py-1.5 text-sm">ATS {decisionSupport.guardRailRecommendation.atsLevel}</Badge>
               </div>
-              <p className="mt-3 text-base font-black text-slate-900">{ATS_LEVEL_DETAILS[decisionSupport.guardRailRecommendation.atsLevel].name}</p>
-              <p className="text-sm font-bold text-slate-500">
+              <p className="mt-3 text-base font-black text-text">{ATS_LEVEL_DETAILS[decisionSupport.guardRailRecommendation.atsLevel].name}</p>
+              <p className="text-sm font-bold text-text-muted">
                 {decisionSupport.guardRailApplied ? "Guard rail diterapkan sebagai pengaman sistem" : "Guard rail ditampilkan sebagai pembanding"}
               </p>
-              <ul className="mt-3 space-y-2 text-sm font-medium leading-relaxed text-slate-700">
+              <ul className="mt-3 space-y-2 text-sm font-medium leading-relaxed text-text">
                 {decisionSupport.guardRailRecommendation.reasons.map((reason, index) => (
                   <li key={index} className="flex items-start gap-2">
-                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-amber-600" />
+                    <span className="mt-2 size-2 shrink-0 rounded-full bg-warning" />
                     <span>{reason.replace(/^Rule-Based ATS [1-5]:\s*/, "")}</span>
                   </li>
                 ))}
               </ul>
-              <button
-                type="button"
-                onClick={() => chooseRecommendation("guardrail", decisionSupport.guardRailRecommendation.atsLevel)}
-                className="mt-4 w-full rounded-xl border border-amber-400 bg-amber-50 px-4 py-3 font-black text-amber-900 hover:bg-amber-100"
-              >
+              <Button variant="outline" fullWidth className="mt-4 border-warning/40" onClick={() => chooseRecommendation("guardrail", decisionSupport.guardRailRecommendation.atsLevel)}>
                 Tetapkan ATS {decisionSupport.guardRailRecommendation.atsLevel} sebagai Keputusan Nakes
-              </button>
-            </article>
+              </Button>
+            </Card>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50/80 p-4">
+          <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h4 className="font-black text-sky-950">Keputusan berbeda dari kedua rekomendasi?</h4>
-                <p className="mt-1 text-sm font-medium text-sky-800">
+                <h4 className="font-black text-text">Keputusan berbeda dari kedua rekomendasi?</h4>
+                <p className="mt-1 text-sm font-medium text-text-muted">
                   Nakes dapat menetapkan level ATS lain berdasarkan pemeriksaan langsung dan pertimbangan klinis profesional.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={chooseIndependentClinicalDecision}
-                className="shrink-0 rounded-xl bg-sky-700 px-4 py-3 font-black text-white shadow-sm hover:bg-sky-800"
-              >
+              <Button variant="primary" className="shrink-0" onClick={chooseIndependentClinicalDecision}>
                 Tetapkan ATS Lain
-              </button>
+              </Button>
             </div>
           </div>
-        </section>
+        </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-3">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
-            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Hasil Sistem Sebelum Validasi
-            </h3>
-            <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
-              {prediction.providerUsed || "Rule-Based"}
-            </span>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card padding="md" className="space-y-3">
+          <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-text">Hasil Sistem Sebelum Validasi</h3>
+            <Badge tone="primary">{prediction.providerUsed || "Rule-Based"}</Badge>
           </div>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-lg font-black text-slate-800">{predictionDetails.name}</p>
-              <p className="text-xs font-bold text-slate-500">{predictionDetails.timeLimit}</p>
+              <p className="text-lg font-black text-text">{predictionDetails.name}</p>
+              <p className="text-xs font-bold text-text-muted">{predictionDetails.timeLimit}</p>
             </div>
             <div className="text-right">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase">Confidence</span>
-              <span className="text-xl font-black text-slate-800">{prediction.confidenceScore}%</span>
+              <span className="block text-xs font-bold uppercase text-text-muted">Confidence</span>
+              <span className="text-xl font-black text-text">{prediction.confidenceScore}%</span>
             </div>
           </div>
-          <div className="text-[11px] text-slate-500 font-medium space-y-1">
-            <p><strong className="text-slate-700">Model:</strong> {prediction.modelUsed || "Clinical Safety Rules v1"}</p>
-            <p><strong className="text-slate-700">Kategori:</strong> {prediction.atsCategory || `ATS Kategori ${prediction.atsLevel}`}</p>
-            <p><strong className="text-slate-700">Emergency:</strong> {prediction.emergencyIndicator ? "Ya" : "Tidak"}</p>
+          <div className="space-y-1 text-xs font-medium text-text-muted">
+            <p><strong className="text-text">Model:</strong> {prediction.modelUsed || "Clinical Safety Rules v1"}</p>
+            <p><strong className="text-text">Kategori:</strong> {prediction.atsCategory || `ATS Kategori ${prediction.atsLevel}`}</p>
+            <p><strong className="text-text">Emergency:</strong> {prediction.emergencyIndicator ? "Ya" : "Tidak"}</p>
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-3">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
-            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Hasil Final / Override
-            </h3>
-            <span className={`text-[10px] font-black px-2 py-1 rounded-lg border ${
-              hasOverride ? "bg-amber-50 text-amber-700 border-amber-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"
-            }`}>
-              {hasOverride ? "Override Klinis" : "Sesuai Prediksi"}
-            </span>
+        <Card padding="md" className="space-y-3">
+          <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-text">Hasil Final / Override</h3>
+            <Badge tone={hasOverride ? "warning" : "secondary"}>{hasOverride ? "Override Klinis" : "Sesuai Prediksi"}</Badge>
           </div>
           <div className="flex items-start gap-3">
-            <CheckCircle2 size={18} className={hasOverride ? "text-amber-600 shrink-0 mt-0.5" : "text-emerald-600 shrink-0 mt-0.5"} />
+            <CheckCircle2 size={18} className={`mt-0.5 shrink-0 ${hasOverride ? "text-amber-600 dark:text-amber-400" : "text-secondary"}`} />
             <div>
-              <p className="text-lg font-black text-slate-800">{levelDetails.name}</p>
-              <p className="text-xs font-bold text-slate-500">{levelDetails.timeLimit}</p>
+              <p className="text-lg font-black text-text">{levelDetails.name}</p>
+              <p className="text-xs font-bold text-text-muted">{levelDetails.timeLimit}</p>
               {hasOverride && (
-                <p className="mt-2 text-[11px] leading-relaxed text-slate-600 font-medium">
+                <p className="mt-2 text-xs font-medium leading-relaxed text-text-muted">
                   {reasonOverride || data.atsFinal?.alasanOverride || "Alasan override belum diisi."}
                 </p>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-100 p-3">
-            <UserCheck size={16} className="text-slate-500 shrink-0" />
+          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-bg p-3">
+            <UserCheck size={16} className="shrink-0 text-text-muted" />
             <div className="min-w-0">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Validator</span>
-              <span className="block text-xs font-black text-slate-800 truncate">{validatorName}</span>
-              <span className="block text-[11px] font-semibold text-slate-500 truncate">{validatorRole}</span>
+              <span className="block text-xs font-bold uppercase tracking-wider text-text-muted">Validator</span>
+              <span className="block truncate text-xs font-black text-text">{validatorName}</span>
+              <span className="block truncate text-xs font-semibold text-text-muted">{validatorRole}</span>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Warning List */}
       {prediction.warningConditions && prediction.warningConditions.length > 0 && (
-        <div className="bg-rose-50 border border-rose-150 rounded-2xl p-4 space-y-2">
-          <div className="flex items-center gap-2 text-rose-800 text-xs font-bold">
-            <AlertCircle size={15} className="text-rose-600 animate-pulse" />
+        <div className="space-y-2 rounded-2xl border border-danger/30 bg-danger/5 p-4">
+          <div className="flex items-center gap-2 text-xs font-bold text-danger">
+            <AlertCircle size={15} className="animate-pulse" />
             <span>ALARM BAHAYA / RED FLAGS TERDETEKSI:</span>
           </div>
-          <ul className="list-disc list-inside text-[11px] text-rose-700 font-medium space-y-1">
+          <ul className="list-inside list-disc space-y-1 text-xs font-medium text-danger">
             {prediction.warningConditions.map((warn, index) => (
               <li key={index}>{warn}</li>
             ))}
@@ -352,185 +330,134 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
       )}
 
       {/* Detailed clinical reasoning */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-3">
-        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider border-b pb-2">
-          Analisis Klinis AI Triage
-        </h3>
-        <p className="text-xs text-slate-600 leading-relaxed font-medium">
-          {prediction.alasanKlasifikasi}
-        </p>
-      </div>
+      <Card padding="md" className="space-y-3">
+        <h3 className="border-b border-border/70 pb-2 text-xs font-bold uppercase tracking-wider text-text">Analisis Klinis AI Triage</h3>
+        <p className="text-xs font-medium leading-relaxed text-text-muted">{prediction.alasanKlasifikasi}</p>
+      </Card>
 
       {/* Clinical information used */}
       {prediction.informasiKlinisDigunakan && prediction.informasiKlinisDigunakan.length > 0 && (
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-3">
-          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider border-b pb-2">
-            Informasi Klinis yang Digunakan
-          </h3>
-          <ul className="space-y-1.5 text-xs text-slate-600">
+        <Card padding="md" className="space-y-3">
+          <h3 className="border-b border-border/70 pb-2 text-xs font-bold uppercase tracking-wider text-text">Informasi Klinis yang Digunakan</h3>
+          <ul className="space-y-1.5 text-xs text-text-muted">
             {prediction.informasiKlinisDigunakan.map((item, i) => (
               <li key={i} className="flex items-start gap-2 font-medium">
-                <span className="text-indigo-500 font-bold shrink-0 mt-0.5">-</span>
+                <span className="mt-0.5 shrink-0 font-bold text-primary">-</span>
                 <span>{item}</span>
               </li>
             ))}
           </ul>
-        </div>
+        </Card>
       )}
 
       {/* Missing clinical information */}
       {prediction.informasiTambahanDiperlukan && prediction.informasiTambahanDiperlukan.length > 0 && (
-        <div className="bg-sky-50 p-5 rounded-2xl border border-sky-100 shadow-xs space-y-3">
-          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-sky-100 pb-2">
-            Informasi Tambahan yang Masih Diperlukan
-          </h3>
-          <ul className="space-y-1.5 text-xs text-slate-600">
+        <Card padding="md" className="space-y-3 border-primary/20 bg-primary/5">
+          <h3 className="border-b border-primary/20 pb-2 text-xs font-bold uppercase tracking-wider text-text">Informasi Tambahan yang Masih Diperlukan</h3>
+          <ul className="space-y-1.5 text-xs text-text-muted">
             {prediction.informasiTambahanDiperlukan.map((item, i) => (
               <li key={i} className="flex items-start gap-2 font-medium">
-                <span className="text-sky-600 font-bold shrink-0 mt-0.5">-</span>
+                <span className="mt-0.5 shrink-0 font-bold text-primary">-</span>
                 <span>{item}</span>
               </li>
             ))}
           </ul>
-        </div>
+        </Card>
       )}
 
       {/* Early actions */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-3">
-        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider border-b pb-2">
-          Rekomendasi Tindakan Keperawatan IGD Awal
-        </h3>
-        <ul className="space-y-1.5 text-xs text-slate-600">
+      <Card padding="md" className="space-y-3">
+        <h3 className="border-b border-border/70 pb-2 text-xs font-bold uppercase tracking-wider text-text">Rekomendasi Tindakan Keperawatan IGD Awal</h3>
+        <ul className="space-y-1.5 text-xs text-text-muted">
           {prediction.rekomendasiAwal?.map((rec, i) => (
             <li key={i} className="flex items-start gap-2 font-medium">
-              <span className="text-emerald-500 font-bold shrink-0 mt-0.5">✔</span>
+              <span className="mt-0.5 shrink-0 font-bold text-secondary">&#10003;</span>
               <span>{rec}</span>
             </li>
           ))}
         </ul>
-      </div>
+      </Card>
 
       {/* Override mechanism */}
-      <div id="clinical-final-decision" className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-3">
+      <Card padding="md" id="clinical-final-decision" className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Keputusan Final Nakes (Dokter/Perawat)
-          </h3>
-          <button
-            id="btn-toggle-override"
-            type="button"
-            onClick={() => setShowOverride(!showOverride)}
-            className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer"
-          >
+          <h3 className="text-xs font-bold uppercase tracking-wider text-text">Keputusan Final Nakes (Dokter/Perawat)</h3>
+          <button type="button" onClick={() => setShowOverride(!showOverride)} className="text-xs font-bold text-primary hover:underline">
             {showOverride ? "Batalkan Override" : "Aktifkan override keputusan"}
           </button>
         </div>
 
         {showOverride && (
-          <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl space-y-3">
-            <p className="rounded-xl border border-amber-200 bg-white p-3 text-xs font-semibold leading-relaxed text-slate-700">
+          <div className="space-y-3 rounded-xl border border-warning/30 bg-warning/5 p-3">
+            <p className="rounded-xl border border-warning/30 bg-surface p-3 text-xs font-semibold leading-relaxed text-text">
               Pilih rekomendasi AI, saran guard rail, atau level ATS lain sesuai hasil asesmen langsung. Keputusan dan alasan di bawah akan dicatat sebagai keputusan final nakes.
             </p>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                Ubah Level ATS Menjadi:
-              </label>
-              <select
-                id="select-override-level"
-                value={overrideLevel}
-                onChange={(e) => setOverrideLevel(e.target.value !== "" ? Number(e.target.value) : "")}
-                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-hidden"
-              >
-                <option value="">-- Pilih Level Baru --</option>
-                <option value={1}>ATS 1 — Merah (Resusitasi / Segera)</option>
-                <option value={2}>ATS 2 — Orange (≤ 10 menit)</option>
-                <option value={3}>ATS 3 — Hijau (≤ 30 menit)</option>
-                <option value={4}>ATS 4 — Biru (≤ 60 menit)</option>
-                <option value={5}>ATS 5 — Putih (≤ 120 menit)</option>
-              </select>
-            </div>
+            <SelectField
+              id="select-override-level"
+              label="Ubah Level ATS Menjadi:"
+              value={overrideLevel}
+              onChange={(e) => setOverrideLevel(e.target.value !== "" ? Number(e.target.value) : "")}
+            >
+              <option value="">-- Pilih Level Baru --</option>
+              <option value={1}>ATS 1 — Merah (Resusitasi / Segera)</option>
+              <option value={2}>ATS 2 — Orange (≤ 10 menit)</option>
+              <option value={3}>ATS 3 — Hijau (≤ 30 menit)</option>
+              <option value={4}>ATS 4 — Biru (≤ 60 menit)</option>
+              <option value={5}>ATS 5 — Putih (≤ 120 menit)</option>
+            </SelectField>
 
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                Alasan override keputusan AI <span className="text-rose-500">*</span>
-              </label>
-              <textarea
-                id="input-override-reason"
-                rows={2}
-                placeholder="Alasan keprofesian dokter/perawat..."
-                value={reasonOverride}
-                onChange={(e) => setReasonOverride(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-205 rounded-lg focus:outline-hidden"
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Clinician Authentication Panel */}
-      <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider border-b pb-2">
-          Verifikasi Petugas Triase IGD (Dokter/Perawat)
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">
-              Nama Tenaga Kesehatan <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="input-clinician-name"
-              placeholder="Contoh: Ns. Ayu Lestari, S.Kep"
-              value={namaPetugas}
-              onChange={(e) => setNamaPetugas(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-hidden"
-              required
+            <TextareaField
+              id="input-override-reason"
+              label="Alasan override keputusan AI *"
+              rows={2}
+              placeholder="Alasan keprofesian dokter/perawat..."
+              value={reasonOverride}
+              onChange={(e) => setReasonOverride(e.target.value)}
             />
           </div>
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">
-              Jabatan / Role Tugas <span className="text-rose-500">*</span>
-            </label>
-            <select
-              id="select-clinician-role"
-              value={jabatanPetugas}
-              onChange={(e) => setJabatanPetugas(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-hidden"
-            >
-              <option value="Perawat IGD">Perawat IGD</option>
-              <option value="Dokter Jaga PJ">Dokter Jaga PJ</option>
-              <option value="Kepala Tim Jaga">Kepala Tim Jaga</option>
-              <option value="Dokter Triase Utama">Dokter Triase Utama</option>
-              <option value="Residen Senior">Residen Senior</option>
-            </select>
-          </div>
+        )}
+      </Card>
+
+      {/* Clinician Authentication Panel */}
+      <Card padding="md" className="space-y-3 bg-bg">
+        <h3 className="border-b border-border/70 pb-2 text-xs font-bold uppercase tracking-wider text-text">Verifikasi Petugas Triase IGD (Dokter/Perawat)</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Input
+            id="input-clinician-name"
+            label="Nama Tenaga Kesehatan *"
+            placeholder=" "
+            value={namaPetugas}
+            onChange={(e) => setNamaPetugas(e.target.value)}
+            required
+          />
+          <SelectField id="select-clinician-role" label="Jabatan / Role Tugas *" value={jabatanPetugas} onChange={(e) => setJabatanPetugas(e.target.value)}>
+            <option value="Perawat IGD">Perawat IGD</option>
+            <option value="Dokter Jaga PJ">Dokter Jaga PJ</option>
+            <option value="Kepala Tim Jaga">Kepala Tim Jaga</option>
+            <option value="Dokter Triase Utama">Dokter Triase Utama</option>
+            <option value="Residen Senior">Residen Senior</option>
+          </SelectField>
         </div>
-      </div>
+      </Card>
 
       {/* After analysis, saving is the only primary record action. */}
       <div className="space-y-2.5 pt-2">
-        <button
-          id="btn-save-triage-record"
+        <Button
+          variant="secondary"
+          size="lg"
+          fullWidth
+          disabled={saveDisabled}
+          loading={isSaving}
           onClick={handleTriggerSave}
-          disabled={isSaving || (showOverride && !reasonOverride) || !namaPetugas.trim()}
-          className={`w-full py-3 text-sm font-black rounded-xl text-center flex items-center justify-center gap-2 transition shadow-md cursor-pointer ${
-            (showOverride && !reasonOverride) || !namaPetugas.trim()
-              ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-              : "bg-emerald-600 hover:bg-emerald-700 text-white"
-          }`}
+          leftIcon={!isSaving ? <Save size={16} /> : undefined}
         >
-          <Save size={16} />
-          <span>{isSaving ? "Menyimpan Data..." : "Simpan Hasil Triase ke Database"}</span>
-        </button>
+          {isSaving ? "Menyimpan Data..." : "Simpan Hasil Triase ke Database"}
+        </Button>
         {showOverride && !reasonOverride && (
-          <p className="text-[10px] text-center text-rose-500 mt-1 font-semibold">
-            * Harap isi alasan override klinis untuk mengaktifkan penyimpanan data.
-          </p>
+          <p className="mt-1 text-center text-xs font-semibold text-danger">* Harap isi alasan override klinis untuk mengaktifkan penyimpanan data.</p>
         )}
         {!namaPetugas.trim() && (
-          <p className="text-[10px] text-center text-rose-500 mt-1 font-semibold">
-            * Harap isi Nama Tenaga Kesehatan untuk mengaktifkan penyimpanan data.
-          </p>
+          <p className="mt-1 text-center text-xs font-semibold text-danger">* Harap isi Nama Tenaga Kesehatan untuk mengaktifkan penyimpanan data.</p>
         )}
       </div>
     </div>
