@@ -11,7 +11,7 @@ export interface StepperProps {
   steps: StepDef[];
   activeStep: number;
   onStepClick?: (index: number) => void;
-  /** Accessibility mode swaps the horizontal scroll-snap strip for a wrapping grid (larger targets). */
+  /** Accessibility mode swaps the compact wrapping tabs for a wrapping grid (larger targets). */
   accessible?: boolean;
 }
 
@@ -30,13 +30,7 @@ export function Stepper({ steps, activeStep, onStepClick, accessible = false }: 
           />
         </div>
       )}
-      <div
-        className={
-          accessible
-            ? "grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3"
-            : "standard-stepper flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1"
-        }
-      >
+      <div className={accessible ? "grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-wrap gap-2"}>
         {steps.map((step, index) => {
           const state = index === activeStep ? "active" : index < activeStep ? "done" : "upcoming";
           return (
@@ -46,8 +40,8 @@ export function Stepper({ steps, activeStep, onStepClick, accessible = false }: 
               onClick={() => onStepClick?.(index)}
               disabled={!onStepClick}
               aria-current={state === "active" ? "step" : undefined}
-              className={`flex min-h-12 shrink-0 snap-start items-center gap-2.5 rounded-xl border px-3.5 py-2 text-left transition-colors ${
-                accessible ? "w-full" : "w-52"
+              className={`flex min-h-12 shrink-0 items-center gap-2.5 rounded-xl border px-3.5 py-2 text-left transition-colors ${
+                accessible ? "w-full" : "w-48"
               } ${
                 state === "active"
                   ? "border-primary/40 bg-primary/10 text-primary"

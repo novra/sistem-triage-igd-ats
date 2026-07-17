@@ -12,19 +12,19 @@
 
   /* Standard modern scale. The larger senior-friendly scale lives entirely
      inside .accessibility-mode so both audiences get an intentional layout. */
-  --text-xs: 0.8125rem;
+  --text-xs: 0.75rem;
   --text-xs--line-height: 1.45;
-  --text-sm: 0.875rem;
+  --text-sm: 0.8125rem;
   --text-sm--line-height: 1.5;
-  --text-base: 1rem;
+  --text-base: 0.9375rem;
   --text-base--line-height: 1.55;
-  --text-lg: 1.125rem;
+  --text-lg: 1.0625rem;
   --text-lg--line-height: 1.45;
-  --text-xl: 1.25rem;
+  --text-xl: 1.1875rem;
   --text-xl--line-height: 1.4;
-  --text-2xl: 1.5rem;
+  --text-2xl: 1.4375rem;
   --text-2xl--line-height: 1.4;
-  --text-3xl: 1.875rem;
+  --text-3xl: 1.75rem;
   --text-3xl--line-height: 1.35;
   --font-weight-extrabold: 750;
   --font-weight-black: 800;
@@ -180,11 +180,6 @@ textarea::placeholder {
     radial-gradient(circle at 5% -5%, rgb(14 116 144 / 0.2), transparent 25rem),
     radial-gradient(circle at 100% 0%, rgb(109 40 217 / 0.16), transparent 28rem),
     #020617;
-}
-
-.standard-stepper {
-  scrollbar-width: thin;
-  scrollbar-color: rgb(165 180 252) transparent;
 }
 
 .mobile-primary-nav {

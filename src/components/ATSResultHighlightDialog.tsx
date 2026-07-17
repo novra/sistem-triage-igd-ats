@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { AlertTriangle, CheckCircle2, Clock, ShieldAlert } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, ListChecks } from "lucide-react";
 import { ATS_LEVEL_DETAILS, TriageRecord } from "../types";
 import { Dialog } from "./ui/Dialog";
 import { Button } from "./ui/Button";
@@ -53,10 +53,10 @@ export default function ATSResultHighlightDialog({ open, onClose, prediction }: 
         </motion.div>
 
         {recommendations.length > 0 && (
-          <div className="rounded-2xl border border-border/70 bg-surface p-4">
+          <div className="rounded-2xl border border-secondary/30 bg-secondary/6 p-4">
             <div className="mb-3 flex items-center gap-2">
-              <ShieldAlert className="size-4 text-primary" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-text">Rekomendasi Tindakan Awal</h3>
+              <ListChecks className="size-4 text-secondary" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-secondary">Rekomendasi Tindakan Awal</h3>
             </div>
             <motion.ul variants={staggerContainer} initial="hidden" animate="visible" className="space-y-2">
               {recommendations.map((rec, index) => (

@@ -359,26 +359,24 @@ export default function RecordHistoryList({
             return (
               <Card key={record.id} padding="none" className="overflow-hidden">
                 <div className="p-4 sm:p-5">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-base font-extrabold text-text">{record.namaPasien}</h3>
-                          <Badge tone="neutral" className={details.badgeColor}>{details.name}</Badge>
-                          {predictionLevel && predictionLevel !== finalLevel && (
-                            <span className="text-xs text-text-muted">AI: ATS {predictionLevel}</span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 font-mono text-xs font-bold text-primary">{record.nomorRM} &middot; {record.umur} th &middot; {record.gender}</p>
+                  <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1.2fr)_minmax(0,1fr)_auto] lg:items-center">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="truncate text-base font-extrabold text-text">{record.namaPasien}</h3>
+                        <Badge tone="neutral" className={details.badgeColor}>{details.name}</Badge>
+                        {predictionLevel && predictionLevel !== finalLevel && (
+                          <span className="text-xs text-text-muted">AI: ATS {predictionLevel}</span>
+                        )}
                       </div>
-                      <div className="min-w-0 text-xs font-medium text-text-muted">
-                        <span className="block truncate max-w-52 font-semibold text-text">{record.chiefComplaint || "Keluhan tidak tercatat"}</span>
-                        <span className="block">{formatDate(record.timestamp)}</span>
-                      </div>
-                      <div className="min-w-0 text-xs font-medium text-text-muted">
-                        <span className="block font-bold uppercase tracking-wider">Validator</span>
-                        <span className="block truncate max-w-40 font-semibold text-text">{record.atsFinal?.namaPetugas || "-"}</span>
-                      </div>
+                      <p className="mt-0.5 font-mono text-xs font-bold text-primary">{record.nomorRM} &middot; {record.umur} th &middot; {record.gender}</p>
+                    </div>
+                    <div className="min-w-0 text-xs font-medium text-text-muted">
+                      <span className="block truncate font-semibold text-text">{record.chiefComplaint || "Keluhan tidak tercatat"}</span>
+                      <span className="block">{formatDate(record.timestamp)}</span>
+                    </div>
+                    <div className="min-w-0 text-xs font-medium text-text-muted">
+                      <span className="block font-bold uppercase tracking-wider">Validator</span>
+                      <span className="block truncate font-semibold text-text">{record.atsFinal?.namaPetugas || "-"}</span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { TriageRecord, ATS_LEVEL_DETAILS } from "../types";
-import { ShieldAlert, AlertCircle, Save, Activity, CheckCircle2, UserCheck, Bot, Scale, ShieldCheck } from "lucide-react";
+import { ShieldAlert, AlertCircle, Save, Activity, CheckCircle2, UserCheck, Bot, Scale, ShieldCheck, ListChecks } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "./ui/Toast";
 import { Card } from "./ui/Card";
@@ -366,12 +366,15 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
       )}
 
       {/* Early actions */}
-      <Card padding="md" className="space-y-3">
-        <h3 className="border-b border-border/70 pb-2 text-xs font-bold uppercase tracking-wider text-text">Rekomendasi Tindakan Keperawatan IGD Awal</h3>
-        <ul className="space-y-1.5 text-xs text-text-muted">
+      <Card padding="md" className="space-y-3 border-secondary/30 bg-secondary/6">
+        <div className="flex items-center gap-2 border-b border-secondary/20 pb-2">
+          <ListChecks className="size-4 shrink-0 text-secondary" />
+          <h3 className="text-xs font-black uppercase tracking-wider text-secondary">Rekomendasi Tindakan Keperawatan IGD Awal</h3>
+        </div>
+        <ul className="space-y-1.5 text-xs text-text">
           {prediction.rekomendasiAwal?.map((rec, i) => (
-            <li key={i} className="flex items-start gap-2 font-medium">
-              <span className="mt-0.5 shrink-0 font-bold text-secondary">&#10003;</span>
+            <li key={i} className="flex items-start gap-2 font-semibold">
+              <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-secondary" />
               <span>{rec}</span>
             </li>
           ))}

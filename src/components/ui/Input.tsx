@@ -49,7 +49,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             <label
               htmlFor={inputId}
               className={cn(
-                "pointer-events-none absolute top-2 text-xs font-bold text-text-muted transition-all",
+                "pointer-events-none absolute top-2 right-3.5 truncate whitespace-nowrap text-xs font-bold text-text-muted transition-all",
                 "peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm peer-placeholder-shown:font-medium",
                 "peer-focus:top-2 peer-focus:text-xs peer-focus:font-bold peer-focus:text-primary",
                 leftIcon ? "left-10" : "left-3.5",
@@ -95,18 +95,13 @@ export const SelectField = React.forwardRef<HTMLSelectElement, SelectFieldProps>
 
     return (
       <div className={cn("w-full", containerClassName)}>
-        {label && (
-          <label htmlFor={selectId} className="mb-1.5 block text-xs font-bold text-text-muted">
-            {label}
-          </label>
-        )}
         <div className="relative">
           {leftIcon && <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted">{leftIcon}</span>}
           <select
             ref={ref}
             id={selectId}
             className={cn(
-              "w-full appearance-none rounded-xl border bg-surface py-2.5 pr-9 text-sm font-medium text-text outline-none transition-colors",
+              "w-full appearance-none rounded-xl border bg-surface pb-2 pr-9 pt-5 text-sm font-medium text-text outline-none transition-colors",
               leftIcon ? "pl-10" : "pl-3.5",
               error ? "border-danger focus:border-danger" : "border-border focus:border-primary",
               className,
@@ -115,6 +110,17 @@ export const SelectField = React.forwardRef<HTMLSelectElement, SelectFieldProps>
           >
             {children}
           </select>
+          {label && (
+            <label
+              htmlFor={selectId}
+              className={cn(
+                "pointer-events-none absolute top-2 right-9 truncate whitespace-nowrap text-xs font-bold text-text-muted",
+                leftIcon ? "left-10" : "left-3.5",
+              )}
+            >
+              {label}
+            </label>
+          )}
           <svg className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
           </svg>

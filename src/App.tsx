@@ -47,7 +47,8 @@ import {
   ClipboardList,
   Accessibility,
   Plus,
-  ChevronDown
+  ChevronDown,
+  ListChecks
 } from "lucide-react";
 
 const INITIAL_FORM: TriageRecord = {
@@ -1004,12 +1005,14 @@ export default function App() {
               </div>
             </div>
 
-            <div className="space-y-2 rounded-xl border border-border/70 bg-surface p-3">
-              <span className="block text-xs font-bold uppercase tracking-widest text-text-muted">Rekomendasi Tindakan</span>
+            <div className="space-y-2 rounded-xl border border-secondary/30 bg-secondary/6 p-3">
+              <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-secondary">
+                <ListChecks size={13} /> Rekomendasi Tindakan
+              </span>
               <ul className="space-y-1.5">
                 {liveRecommendations.map((rec, index) => (
                   <li key={index} className="flex items-start gap-2 text-xs font-semibold leading-relaxed text-text">
-                    <span className="mt-1 size-1.5 shrink-0 rounded-full bg-secondary" />
+                    <CheckCircle2 size={13} className="mt-0.5 shrink-0 text-secondary" />
                     <span>{rec}</span>
                   </li>
                 ))}
