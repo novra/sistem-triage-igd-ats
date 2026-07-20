@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { env } from "../../config/env";
+import { callRunPod } from "../../shared/runpod";
 
 const ai = new GoogleGenAI({
   apiKey: env.geminiApiKey || "dummy-key-to-prevent-instant-crash",
@@ -379,6 +380,8 @@ function extractRecordPayload(payload: any, depth = 0): any {
     payload?.choices?.[0]?.message?.content,
     payload?.choices?.[0]?.message?.reasoning,
     payload?.choices?.[0]?.text,
+    // Bentuk balasan job-queue RunPod worker-vllm (bukan rute /openai/): output[].choices[].tokens[].
+    Array.isArray(payload?.choices?.[0]?.tokens) ? payload.choices[0].tokens.join("") : undefined,
     payload?.generated_text,
     payload?.text,
     payload?.record,
@@ -448,7 +451,11 @@ async function extractWithRunPod(promptText: string) {
     ? {
         model: env.runpodVllmModel,
         messages,
-        max_tokens: 3000,
+        // 1200 dipilih supaya prompt (skema ekstraksi + narasi) + max_tokens tidak melebihi
+        // max_model_len endpoint (banyak deployment RunPod dibatasi 4096 token) — pernah
+        // diverifikasi max_tokens 3000 bikin worker balas HTTP 500 generik begitu
+        // prompt+budget lewat batas konteks model.
+        max_tokens: 1200,
         temperature: 0.1,
         stream: false,
         response_format: { type: "json_object" },
@@ -458,25 +465,24 @@ async function extractWithRunPod(promptText: string) {
         input: {
           prompt: promptText,
           promptText,
-          max_tokens: 3000,
+          // sampling_params adalah satu-satunya field resmi yang dibaca worker-vllm untuk
+          // parameter generasi di rute job-queue (/run, /runsync) — max_tokens/temperature
+          // di top-level input diabaikan. chat_template_kwargs TIDAK didukung sama sekali di
+          // rute ini (hanya di /openai/v1/chat/completions), jadi tetap disertakan hanya
+          // untuk kompatibilitas handler custom lain yang mungkin membacanya langsung.
+          sampling_params: { max_tokens: 1200, temperature: 0.1 },
+          max_tokens: 1200,
           chat_template_kwargs: { enable_thinking: false },
           messages,
         },
       };
 
-  const response = await fetch(targetUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(env.runpodApiKey ? { Authorization: `Bearer ${env.runpodApiKey}` } : {}),
-    },
-    body: JSON.stringify(requestBody),
+  const data = await callRunPod({
+    targetUrl,
+    requestBody,
+    apiKey: env.runpodApiKey,
+    isJobQueueFormat: !usesOpenAiCompatibleEndpoint,
   });
-  if (!response.ok) throw new Error(`RunPod API returned status ${response.status}`);
-  const data = await response.json();
-  if (data?.status === "FAILED" || data?.error) {
-    throw new Error(`RunPod model failed: ${data?.error || data?.status}`);
-  }
   return extractRecordPayload(data);
 }
 
