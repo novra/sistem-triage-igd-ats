@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { TriageRecord } from "../types";
 import {
   Sparkles,
@@ -9,12 +9,15 @@ import {
   ArrowRight,
   ClipboardCheck,
   RotateCcw,
-  BookOpen
+  BookOpen,
+  Mic,
+  Square
 } from "lucide-react";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
 import { TextareaField } from "./ui/Input";
+import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 
 interface ImportTriageRecordsProps {
   onApplyRecord: (record: TriageRecord) => void;
@@ -65,6 +68,10 @@ export default function ImportTriageRecords({
   const [narrative, setNarrative] = useState("");
   const [loading, setLoading] = useState(false);
   const [parsedRecord, setParsedRecord] = useState<TriageRecord | null>(null);
+  const narrativeBaseRef = useRef("");
+  const { isSupported: isVoiceSupported, isListening, start: startListening, stop: stopListening } = useSpeechRecognition(
+    (finalText, interimText) => setNarrative(`${narrativeBaseRef.current}${finalText}${interimText}`),
+  );
   const engineLabel = aiProvider === "runpod"
     ? "Model Mandiri"
     : aiProvider === "huggingface"
@@ -79,6 +86,20 @@ export default function ImportTriageRecords({
     setNarrative(text);
     setParsedRecord(null);
     setErrorMsg(null);
+  };
+
+  const handleToggleVoice = () => {
+    if (isListening) {
+      stopListening();
+      return;
+    }
+    if (!isVoiceSupported) {
+      setErrorMsg("Rekam suara belum didukung di browser ini. Gunakan Chrome atau Edge terbaru, atau ketik narasi secara manual.");
+      return;
+    }
+    setErrorMsg(null);
+    narrativeBaseRef.current = narrative.trim() ? `${narrative.trim()} ` : "";
+    startListening();
   };
 
   const handleParseNarrative = async () => {
@@ -197,6 +218,28 @@ export default function ImportTriageRecords({
         <div className="flex items-center justify-between">
           <span className="text-xs font-black uppercase tracking-wider text-text-muted">Masukkan Catatan / Narasi Keluhan IGD Pasien:</span>
           <span className="font-mono text-xs text-text-muted">{narrative.length} karakter</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            type="button"
+            variant={isListening ? "danger" : "outline"}
+            size="sm"
+            onClick={handleToggleVoice}
+            disabled={loading}
+            leftIcon={isListening ? <Square size={13} /> : <Mic size={13} />}
+          >
+            {isListening ? "Berhenti Merekam" : "Rekam Suara Dokter"}
+          </Button>
+          {isListening && (
+            <span className="flex items-center gap-1.5 text-xs font-bold text-danger">
+              <span className="size-2 animate-pulse rounded-full bg-danger" />
+              Mendengarkan (Bahasa Indonesia)...
+            </span>
+          )}
+          {!isVoiceSupported && (
+            <span className="text-xs font-medium text-text-muted">Rekam suara butuh Chrome/Edge</span>
+          )}
         </div>
 
         <div className="relative">
