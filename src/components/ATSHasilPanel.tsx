@@ -25,6 +25,7 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
   const [overrideLevel, setOverrideLevel] = useState<number | "">("");
   const [reasonOverride, setReasonOverride] = useState("");
   const [showOverride, setShowOverride] = useState(false);
+  const [noEscalationPromptDismissed, setNoEscalationPromptDismissed] = useState(false);
   const [namaPetugas, setNamaPetugas] = useState(() => {
     return data.atsFinal?.namaPetugas || user?.name || localStorage.getItem("triage_nama_petugas") || "";
   });
@@ -45,6 +46,7 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
       setReasonOverride("");
       setShowOverride(false);
     }
+    setNoEscalationPromptDismissed(false);
     if (data.atsFinal?.namaPetugas) {
       setNamaPetugas(data.atsFinal.namaPetugas);
     }
@@ -101,6 +103,17 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
         ? { label: `Guard Rail ATS ${decisionSupport.guardRailRecommendation.atsLevel} (Tidak Diterapkan)`, className: "bg-black/25 text-orange-200" }
         : { label: "Tidak Ada Parameter yang Ditangkap Guard Rail", className: "bg-white/10 text-white/75" }
     : null;
+  // Saat guard rail tidak mengeskalasi sama sekali, kartu perbandingan di atas
+  // tidak muncul (karena rekomendasinya memang tidak berbeda) — tanpa ini,
+  // nakes tidak pernah ditawari opsi override sama sekali untuk kasus ini.
+  const showNoEscalationOverridePrompt = Boolean(
+    decisionSupport
+      && prediction.providerUsed?.includes("Model Mandiri")
+      && !decisionSupport.guardRailApplied
+      && !decisionSupport.recommendationsDiffer
+      && !noEscalationPromptDismissed
+      && !showOverride,
+  );
   const validatorName = namaPetugas.trim() || data.atsFinal?.namaPetugas || "Belum divalidasi";
   const validatorRole = jabatanPetugas || data.atsFinal?.jabatanPetugas || "Belum ditentukan";
 
@@ -328,6 +341,27 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
           </div>
         </Card>
       </div>
+
+      {showNoEscalationOverridePrompt && (
+        <Card padding="md" className="border-border/70 bg-bg">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h4 className="text-sm font-black text-text">Tidak Ada Eskalasi dari Guard Rail</h4>
+              <p className="mt-1 text-xs font-medium leading-relaxed text-text-muted">
+                Guard rail rule-based sepakat dengan rekomendasi Model Mandiri — tidak ada parameter yang menaikkan urgensi. Apakah Anda tetap ingin melakukan override manual berdasarkan penilaian klinis langsung?
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button variant="outline" size="sm" onClick={() => setNoEscalationPromptDismissed(true)}>
+                Tidak
+              </Button>
+              <Button variant="primary" size="sm" onClick={chooseIndependentClinicalDecision}>
+                Ya, Override
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Warning List */}
       {prediction.warningConditions && prediction.warningConditions.length > 0 && (
