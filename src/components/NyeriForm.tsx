@@ -13,9 +13,9 @@ interface NyeriFormProps {
 const NYERI_LOKASI_PRESETS = [
   "Dada Kiri",
   "Dada Kanan",
-  "Abdomen (Perut Atas / Lambung)",
-  "Abdomen (Perut Kanan Bawah)",
-  "Kepala / Temporal",
+  "Perut Atas",
+  "Perut Bawah",
+  "Kepala",
   "Leher / Tenggorokan",
   "Punggung / Belakang Dada",
   "Ekstremitas Atas (Lengan)",
