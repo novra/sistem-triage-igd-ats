@@ -490,12 +490,22 @@ export async function parseNarrativeWithAI(narrative: string, aiProvider?: strin
   if (!aiProvider || aiProvider === "rulebased") return null;
   const promptText = buildExtractionPrompt(narrative);
 
+  if (aiProvider === "huggingface" && !env.huggingFaceApiKey) {
+    throw new Error("Provider Hugging Face dipilih tapi HUGGINGFACE_API_KEY (atau HF_TOKEN) belum diisi di konfigurasi server.");
+  }
+  if ((aiProvider === "runpod" || aiProvider === "custom") && !env.customModelUrl) {
+    throw new Error("Provider Model Mandiri dipilih tapi CUSTOM_MODEL_URL belum diisi di konfigurasi server.");
+  }
+  if (aiProvider === "gemini" && !env.geminiApiKey) {
+    throw new Error("Provider Gemini dipilih tapi GEMINI_API_KEY belum diisi di konfigurasi server.");
+  }
+
   let record: any = null;
-  if (aiProvider === "huggingface" && env.huggingFaceApiKey) {
+  if (aiProvider === "huggingface") {
     record = await extractWithHuggingFace(promptText, aiModel);
-  } else if ((aiProvider === "runpod" || aiProvider === "custom") && env.customModelUrl) {
+  } else if (aiProvider === "runpod" || aiProvider === "custom") {
     record = await extractWithRunPod(promptText);
-  } else if (aiProvider === "gemini" && env.geminiApiKey) {
+  } else if (aiProvider === "gemini") {
     record = await extractWithGemini(promptText);
   }
 

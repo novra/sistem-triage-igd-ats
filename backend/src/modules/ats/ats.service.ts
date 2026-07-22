@@ -385,19 +385,29 @@ export async function classifyTriage(
   let aiFailed = false;
 
   try {
+    if (aiProvider === "huggingface" && !env.huggingFaceApiKey) {
+      throw new Error("Provider Hugging Face dipilih tapi HUGGINGFACE_API_KEY (atau HF_TOKEN) belum diisi di konfigurasi server.");
+    }
+    if ((aiProvider === "runpod" || aiProvider === "custom") && !env.customModelUrl) {
+      throw new Error("Provider Model Mandiri dipilih tapi CUSTOM_MODEL_URL belum diisi di konfigurasi server.");
+    }
+    if (aiProvider === "gemini" && !env.geminiApiKey) {
+      throw new Error("Provider Gemini dipilih tapi GEMINI_API_KEY belum diisi di konfigurasi server.");
+    }
+
     if (aiProvider === "rulebased") {
       aiResult = ruleFallback(ruleResult);
-    } else if (aiProvider === "huggingface" && env.huggingFaceApiKey) {
+    } else if (aiProvider === "huggingface") {
       const result = await classifyWithHuggingFace(promptText, aiModel);
       aiResult = result.parsed;
       providerUsed = result.providerUsed;
       modelUsed = result.modelUsed;
-    } else if ((aiProvider === "runpod" || aiProvider === "custom") && env.customModelUrl) {
+    } else if (aiProvider === "runpod" || aiProvider === "custom") {
       const result = await classifyWithRunPod(promptText, record, ruleResult);
       aiResult = result.parsed;
       providerUsed = result.providerUsed;
       modelUsed = result.modelUsed;
-    } else if (aiProvider === "gemini" && env.geminiApiKey) {
+    } else if (aiProvider === "gemini") {
       const result = await classifyWithGemini(promptText);
       aiResult = result.parsed;
       providerUsed = result.providerUsed;

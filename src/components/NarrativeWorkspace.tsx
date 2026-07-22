@@ -146,10 +146,6 @@ export default function NarrativeWorkspace({
   };
 
   const handleAnalyze = async () => {
-    if (!hasInjectedData) {
-      setErrorMsg("Urai narasi dan suntikkan hasilnya ke formulir terlebih dahulu.");
-      return;
-    }
     if (!injectedRecord.nomorRM || !injectedRecord.namaPasien) {
       setErrorMsg("Nomor RM dan Nama Pasien wajib dilengkapi sebelum analisis ATS.");
       navigateToNarrativeSection(0);
@@ -384,7 +380,7 @@ export default function NarrativeWorkspace({
             <Button
               variant="secondary"
               size="lg"
-              disabled={isClassifying || !hasInjectedData}
+              disabled={isClassifying}
               loading={isClassifying}
               onClick={handleAnalyze}
               leftIcon={!isClassifying ? <Wand2 size={20} /> : undefined}
