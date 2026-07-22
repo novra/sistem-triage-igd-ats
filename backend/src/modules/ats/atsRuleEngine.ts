@@ -6,10 +6,6 @@ function isOutsideRange(value: number, range: number[]) {
   return value > 0 && (value < range[0] || value > range[1]);
 }
 
-function isWithinRange(value: number, range: number[]) {
-  return value > 0 && value >= range[0] && value <= range[1];
-}
-
 function readNumericMeasurement(value: unknown): number | null {
   if (value === undefined || value === null || value === "") return null;
   const numericValue = Number(value);
@@ -77,13 +73,10 @@ export function classifyByRules(record: any) {
 
     if (isOutsideRange(rr, range.rr2)) addRule(2, `RR ${rr} di luar rentang +/- 2 SD usia anak.`);
     else if (isOutsideRange(rr, range.rr1)) addRule(3, `RR ${rr} di luar rentang +/- 1 SD usia anak.`);
-    else if (isWithinRange(rr, range.rrNormal)) addRule(4, "Laju napas normal sesuai usia anak.");
     if (isOutsideRange(hr, range.hr2)) addRule(2, `HR ${hr} di luar rentang +/- 2 SD usia anak.`);
     else if (isOutsideRange(hr, range.hr1)) addRule(3, `HR ${hr} di luar rentang +/- 1 SD usia anak.`);
-    else if (isWithinRange(hr, range.hrNormal)) addRule(4, "Laju nadi normal sesuai usia anak.");
     if ((hasRecordedAvpu && (avpu === "Pain" || avpu === "Verbal")) || (hasCompleteGcs && gcsTotal >= 9 && gcsTotal <= 12)) addRule(2, `Penurunan kesadaran/lethargis pada pasien anak (AVPU ${avpu}, GCS ${gcsTotal}).`);
     else if (hasCompleteGcs && gcsTotal >= 13 && gcsTotal < 15) addRule(3, `Perubahan perilaku atau GCS ${gcsTotal} pada pasien anak.`);
-    else if ((hasCompleteGcs && gcsTotal === 15) || (hasRecordedAvpu && avpu === "Alert")) addRule(4, "Kesadaran baik: AVPU Alert dan/atau GCS 15.");
     if (vitalSign.stridor || exam.leher?.stridor) addRule(2, "Stridor terdeteksi pada pasien anak.");
     else if (hasRespiratoryDistress) addRule(2, "Distress napas (retraksi/otot bantu napas) pada pasien anak.");
 
@@ -95,11 +88,10 @@ export function classifyByRules(record: any) {
       || (spo2Measurement !== null && spo2 > 0 && spo2 < 90);
     const hasPediatricKeywordEmergency = hasAnyText("nyeri dada", "keracunan", "racun", "obat risiko tinggi");
     const hasPediatricSepsis = hasAnyText("sepsis");
-    if (hasSevereBleeding || hasPediatricKeywordEmergency || painScore >= 7) {
+    if (hasSevereBleeding || hasPediatricKeywordEmergency) {
       const reasons: string[] = [];
       if (hasSevereBleeding) reasons.push("perdarahan aktif/berat");
       if (hasPediatricKeywordEmergency) reasons.push("gejala emergensi spesifik");
-      if (painScore >= 7) reasons.push(`nyeri berat ${painScore}/10`);
       addRule(2, `Kondisi emergensi pasien anak: ${reasons.join(", ")}.`);
     } else if (hasPediatricSepsis) {
       addRule(
@@ -108,16 +100,13 @@ export function classifyByRules(record: any) {
       );
     } else if (hasAnyText("demam") && hasAnyText("imunosupresi")) {
       addRule(2, "Demam pada anak dengan imunosupresi; perlu evaluasi segera untuk neutropenia febril.");
-    } else if (painScore >= 4 || hasAnyText("muntah", "diare", "nyeri perut") || hasTrauma) {
-      addRule(3, "Gejala gawat pasien anak: nyeri sedang, gejala gastrointestinal persisten, atau trauma.");
-    } else if (painScore >= 1 || hasAnyText("luka kecil", "kontrol", "imunisasi", "psikiatri kronis")) {
-      addRule(5, "Keluhan ringan/tidak gawat pada pasien anak.");
+    } else if (hasAnyText("muntah", "diare", "nyeri perut") || hasTrauma) {
+      addRule(3, "Gejala gawat pasien anak: gejala gastrointestinal persisten atau trauma.");
     }
   } else {
     if ((hasRecordedAvpu && avpu === "Unresponsive") || (hasCompleteGcs && gcsTotal < 9)) addRule(1, `Kesadaran kategori resusitasi: AVPU ${avpu}, GCS ${gcsTotal}.`);
     else if ((hasRecordedAvpu && (avpu === "Pain" || avpu === "Verbal")) || (hasCompleteGcs && gcsTotal >= 9 && gcsTotal <= 12)) addRule(2, `Penurunan kesadaran kategori emergensi: AVPU ${avpu}, GCS ${gcsTotal}.`);
     else if (hasCompleteGcs && gcsTotal > 12 && gcsTotal < 15) addRule(3, `GCS ${gcsTotal} dengan perubahan kesadaran ringan/somnolen.`);
-    else if ((hasCompleteGcs && gcsTotal === 15) || (hasRecordedAvpu && avpu === "Alert")) addRule(4, "Kesadaran baik: AVPU Alert dan/atau GCS 15.");
 
     const hasApnea = Boolean(vitalSign.apnea) || (rrMeasurement !== null && rr === 0);
     const hasLowRr = rr > 0 && rr < 10;
@@ -168,8 +157,6 @@ export function classifyByRules(record: any) {
           if (hasTachycardia) reasons.push(`takikardia (HR ${hr})`);
           if (hasHighBp) reasons.push(`hipertensi berat (TD ${sbp}/${dbp})`);
           addRule(3, `Gangguan sirkulasi: ${reasons.join(", ")}.`);
-        } else if ((hr >= 50 && hr <= 120) && (sbp >= 100 && sbp <= 120) && (dbp >= 70 && dbp <= 90)) {
-          addRule(4, "Frekuensi nadi dan tekanan darah dalam rentang stabil tabel dewasa.");
         }
       }
     }
@@ -197,16 +184,12 @@ export function classifyByRules(record: any) {
     } else if (hasAnyText("demam") && hasAnyText("imunosupresi")) {
       addRule(2, "Demam pada pasien imunosupresi; perlu evaluasi segera untuk neutropenia febril.");
     } else {
-      const hasModeratePain = painScore >= 4;
       const hasGiSymptom = hasAnyText("muntah", "diare", "nyeri perut");
-      if (hasModeratePain || hasGiSymptom || hasTrauma) {
+      if (hasGiSymptom || hasTrauma) {
         const reasons: string[] = [];
-        if (hasModeratePain) reasons.push(`nyeri sedang ${painScore}/10`);
         if (hasGiSymptom) reasons.push("muntah/diare/nyeri perut");
         if (hasTrauma) reasons.push("trauma");
         addRule(3, `Gejala gawat kategori 30 menit: ${reasons.join(", ")}.`);
-      } else if (painScore >= 1 || hasAnyText("luka kecil", "kontrol", "imunisasi", "psikiatri kronis")) {
-        addRule(5, "Keluhan ringan/tidak gawat sesuai kategori 120 menit.");
       }
     }
   }

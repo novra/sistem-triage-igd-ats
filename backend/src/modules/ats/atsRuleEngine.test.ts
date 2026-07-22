@@ -125,3 +125,46 @@ test("fitur paling mendesak selalu menentukan kategori akhir", () => {
   assert.equal(result.overrideLevel, 1);
   assert.equal(result.emergency, true);
 });
+
+test("dewasa dengan GCS 15/AVPU Alert dan tanda vital normal tidak lagi menghasilkan ATS 4", () => {
+  const result = classifyByRules(adultRecord());
+  assert.equal(result.overrideLevel, 5);
+  assert.doesNotMatch(result.warnings.join(" "), /ATS 4/);
+});
+
+test("nyeri sedang (4-6/10) sendirian tidak lagi memicu ATS 3 pada dewasa", () => {
+  const result = classifyByRules(adultRecord({ painScale: { skala: 5 } }));
+  assert.equal(result.overrideLevel, 5);
+  assert.doesNotMatch(result.warnings.join(" "), /ATS 3/);
+});
+
+test("nyeri berat (>=7/10) tanpa gejala lain tetap memicu ATS 2 pada dewasa", () => {
+  const result = classifyByRules(adultRecord({ painScale: { skala: 8 } }));
+  assert.equal(result.overrideLevel, 2);
+});
+
+test("keluhan ringan seperti luka kecil tidak lagi memicu rule ATS 5 tersendiri pada dewasa", () => {
+  const result = classifyByRules(adultRecord({ chiefComplaint: "luka kecil" }));
+  assert.equal(result.overrideLevel, 5);
+  assert.match(result.warnings.join(" "), /tidak ditemukan red flag/i);
+});
+
+test("anak dengan GCS 15/AVPU Alert dan tanda vital normal usia tidak lagi menghasilkan ATS 4", () => {
+  const result = classifyByRules({
+    umur: 5,
+    chiefComplaint: "kontrol",
+    vitalSign: { respiratoryRate: 20, heartRate: 90, saturasiOksigen: 98, gcs: { eye: 4, verbal: 5, motor: 6 }, avpu: "Alert" },
+  });
+  assert.equal(result.overrideLevel, 5);
+  assert.doesNotMatch(result.warnings.join(" "), /ATS 4/);
+});
+
+test("skala nyeri (VAS) pada anak tidak lagi dipakai sebagai kriteria ATS, termasuk nyeri berat", () => {
+  const result = classifyByRules({
+    umur: 5,
+    chiefComplaint: "kontrol",
+    vitalSign: { respiratoryRate: 20, heartRate: 90, saturasiOksigen: 98, gcs: { eye: 4, verbal: 5, motor: 6 }, avpu: "Alert" },
+    painScale: { skala: 9 },
+  });
+  assert.equal(result.overrideLevel, 5);
+});
