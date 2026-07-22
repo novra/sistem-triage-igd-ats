@@ -91,6 +91,16 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
     prediction.providerUsed?.includes("Model Mandiri")
       && decisionSupport?.recommendationsDiffer,
   );
+  // Anotasi kecil di header "VIA {providerUsed}" supaya keterlibatan guard
+  // rail selalu terlihat langsung, bukan hanya lewat kartu perbandingan di
+  // bawah yang cuma muncul kalau rekomendasinya berbeda.
+  const guardRailHeaderNote = decisionSupport && prediction.providerUsed?.includes("Model Mandiri")
+    ? decisionSupport.guardRailApplied
+      ? { label: "+ Eskalasi Guard Rail", className: "bg-black/30 text-yellow-300" }
+      : decisionSupport.recommendationsDiffer
+        ? { label: `Guard Rail ATS ${decisionSupport.guardRailRecommendation.atsLevel} (Tidak Diterapkan)`, className: "bg-black/25 text-orange-200" }
+        : { label: "Tidak Ada Parameter yang Ditangkap Guard Rail", className: "bg-white/10 text-white/75" }
+    : null;
   const validatorName = namaPetugas.trim() || data.atsFinal?.namaPetugas || "Belum divalidasi";
   const validatorRole = jabatanPetugas || data.atsFinal?.jabatanPetugas || "Belum ditentukan";
 
@@ -166,6 +176,11 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
               )}
               {prediction.modelUsed && (
                 <span className="rounded bg-black/25 px-1.5 py-0.5 text-xs font-black tracking-widest">MODEL {prediction.modelUsed}</span>
+              )}
+              {guardRailHeaderNote && (
+                <span className={`rounded px-1.5 py-0.5 text-xs font-black tracking-widest ${guardRailHeaderNote.className}`}>
+                  {guardRailHeaderNote.label}
+                </span>
               )}
             </span>
             <h2 className="text-2xl font-black leading-tight">{levelDetails.name}</h2>
