@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { TriageRecord, ATS_LEVEL_DETAILS } from "../types";
-import { ShieldAlert, AlertCircle, Save, Activity, CheckCircle2, UserCheck, Bot, Scale, ShieldCheck, ListChecks } from "lucide-react";
+import { ShieldAlert, AlertCircle, Save, Activity, CheckCircle2, UserCheck, Bot, Scale, ShieldCheck, ListChecks, HelpCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "./ui/Toast";
 import { Card } from "./ui/Card";
@@ -343,13 +343,20 @@ export default function ATSHasilPanel({ data, onSave, isSaving }: ATSHasilPanelP
       </div>
 
       {showNoEscalationOverridePrompt && (
-        <Card padding="md" className="border-border/70 bg-bg">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h4 className="text-sm font-black text-text">Tidak Ada Eskalasi dari Guard Rail</h4>
-              <p className="mt-1 text-xs font-medium leading-relaxed text-text-muted">
-                Guard rail rule-based sepakat dengan rekomendasi Model Mandiri — tidak ada parameter yang menaikkan urgensi. Apakah Anda tetap ingin melakukan override manual berdasarkan penilaian klinis langsung?
-              </p>
+        <Card padding="lg" className="border-2 border-l-[6px] border-primary/50 border-l-primary bg-primary/10 shadow-md shadow-primary/15">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="relative flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                <HelpCircle size={22} />
+                <span className="absolute -right-1 -top-1 size-3 animate-ping rounded-full bg-primary opacity-75" />
+                <span className="absolute -right-1 -top-1 size-3 rounded-full bg-primary" />
+              </span>
+              <div>
+                <h4 className="text-base font-black uppercase tracking-wide text-primary">Perlu Keputusan Anda: Tidak Ada Eskalasi dari Guard Rail</h4>
+                <p className="mt-1 text-sm font-medium leading-relaxed text-text">
+                  Guard rail rule-based sepakat dengan rekomendasi Model Mandiri — tidak ada parameter yang menaikkan urgensi. Apakah Anda tetap ingin melakukan override manual berdasarkan penilaian klinis langsung?
+                </p>
+              </div>
             </div>
             <div className="flex shrink-0 gap-2">
               <Button variant="outline" size="sm" onClick={() => setNoEscalationPromptDismissed(true)}>
