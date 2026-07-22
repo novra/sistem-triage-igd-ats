@@ -47,8 +47,12 @@ triageRouter.post("/parse-narrative", async (req, res, next) => {
     const userId = req.user?.id;
     const userEmail = req.user?.email;
 
+    // Kalau user memilih provider AI secara eksplisit, hormati pilihannya dan selalu
+    // coba panggil AI-nya — jangan diam-diam di-skip hanya karena heuristik kebetulan
+    // sudah menemukan sinyal inti (riwayat penyakit/skala nyeri) pada narasi pendek.
+    const usingExplicitAiProvider = Boolean(aiProvider) && aiProvider !== "rulebased";
     const heuristicRecord = parseNarrativeHeuristic(narrative);
-    if (!isHeuristicResultWeak(narrative, heuristicRecord)) {
+    if (!usingExplicitAiProvider && !isHeuristicResultWeak(narrative, heuristicRecord)) {
       req.log?.info({ source: "heuristic", aiProvider: aiProvider || "rulebased" }, "Narrative parsed");
       recordEvent({
         eventType: "narrative_parse",
