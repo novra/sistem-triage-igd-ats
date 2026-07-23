@@ -12,6 +12,16 @@ const ai = new GoogleGenAI({
   },
 });
 
+// JSON ATS hanya berisi tujuh field ringkas. 512 memberi ruang aman untuk
+// seluruh red flag dan tindakan klinis tanpa biaya decoding 1.200 token.
+// Data klinis lengkap tetap dibangun deterministik oleh backend.
+const RUNPOD_ATS_MAX_TOKENS = 512;
+const RUNPOD_ATS_SYSTEM_INSTRUCTION = [
+  "Klasifikasikan triase ATS secara klinis.",
+  "Balas hanya satu objek JSON valid, tanpa markdown, pembuka, penutup, atau proses berpikir.",
+  "Gunakan Bahasa Indonesia yang padat; jangan mengulang data pasien.",
+].join(" ");
+
 function buildPrompt(record: any) {
   return `
 Anda adalah asisten kecerdasan buatan medis ahli triase IGD di Indonesia.
@@ -51,24 +61,27 @@ Analisis data berikut berdasarkan standar Australasian Triage Scale (ATS):
    - Ekstremitas atas: ${JSON.stringify(record.pemeriksaanFisik?.ekstremitasAtas || {})}
    - Ekstremitas bawah: ${JSON.stringify(record.pemeriksaanFisik?.ekstremitasBawah || {})}
 
-Silakan hitung level kecocokan ATS:
+Tentukan satu level ATS paling tepat:
 - ATS Kategori 1 (Red): resusitasi segera
 - ATS Kategori 2 (Orange): emergensi 10 menit
 - ATS Kategori 3 (Green): gawat 30 menit
 - ATS Kategori 4 (Blue): sedikit gawat 60 menit
 - ATS Kategori 5 (White): tidak gawat 120 menit
 
-Output WAJIB JSON valid:
+Balas HANYA satu objek JSON valid berikut:
 {
   "atsLevel": <1 | 2 | 3 | 4 | 5>,
   "atsCategory": "ATS Kategori <1-5> (<Red|Orange|Green|Blue|White>)",
   "confidenceScore": <0-100>,
-  "warningConditions": [<string>],
+  "warningConditions": ["<semua red flag relevan; tiap item frasa singkat>"],
   "emergencyIndicator": <boolean>,
-  "alasanKlasifikasi": "<alasan klinis singkat yang mendukung kategori ATS dalam Bahasa Indonesia>",
-  "rekomendasiAwal": [<string>]
+  "alasanKlasifikasi": "<maksimal 30 kata; sebutkan penentu urgensi utama>",
+  "rekomendasiAwal": ["<tindakan langsung; tiap item maksimal 12 kata>"]
 }
-Jangan sertakan field lain selain di atas. Jangan tulis penjelasan/reasoning di luar objek JSON.`;
+Ketentuan mutlak:
+- Semua 7 field wajib ada; gunakan [] bila tidak ada warning.
+- Pertahankan semua informasi klinis penting, gabungkan item setara, dan hindari pengulangan.
+- Jangan sertakan field lain, proses berpikir, atau teks di luar JSON.`;
 }
 
 const atsCategoryLabels: Record<number, string> = {
@@ -303,7 +316,10 @@ function extractTriagePrediction(payload: any, depth = 0): any {
 }
 
 async function classifyWithRunPod(promptText: string, record: any, ruleResult: ReturnType<typeof classifyByRules>) {
-  const usesOpenAiCompatibleEndpoint = /\/v1\/|\/chat\/completions/i.test(env.customModelUrl);
+  // Terima base URL yang berakhir tepat di `/openai/v1` maupun URL lengkap
+  // `/chat/completions`. Pola lama hanya mengenali `/v1/` sehingga base URL
+  // resmi RunPod salah diperlakukan sebagai endpoint job queue.
+  const usesOpenAiCompatibleEndpoint = /\/v1(?:\/|$)|\/chat\/completions/i.test(env.customModelUrl);
   const targetUrl = usesOpenAiCompatibleEndpoint && !/\/chat\/completions\/?$/i.test(env.customModelUrl)
     ? `${env.customModelUrl.replace(/\/$/, "")}/chat/completions`
     : env.customModelUrl;
@@ -314,15 +330,13 @@ async function classifyWithRunPod(promptText: string, record: any, ruleResult: R
     ? {
         model: env.runpodVllmModel,
         messages: [
-          { role: "system", content: "Anda adalah pakar triase medis emergensi. Balas hanya JSON valid tanpa markdown." },
+          { role: "system", content: RUNPOD_ATS_SYSTEM_INSTRUCTION },
           { role: "user", content: promptText },
         ],
-        // 1200 dipilih supaya prompt (bisa >1500 token untuk record pasien lengkap) +
-        // max_tokens tidak melebihi max_model_len endpoint (banyak deployment RunPod
-        // dibatasi 4096 token) — pernah diverifikasi max_tokens 3000 bikin worker balas
-        // HTTP 500 generik begitu prompt+budget lewat batas konteks model.
-        max_tokens: 1200,
-        temperature: 0.1,
+        // 512 cukup untuk kontrak JSON ATS yang ringkas dan mengurangi waktu
+        // decoding dibanding batas lama 1.200 token.
+        max_tokens: RUNPOD_ATS_MAX_TOKENS,
+        temperature: 0,
         stream: false,
         response_format: { type: "json_object" },
         chat_template_kwargs: { enable_thinking: false },
@@ -338,11 +352,11 @@ async function classifyWithRunPod(promptText: string, record: any, ruleResult: R
           // di top-level input diabaikan. chat_template_kwargs TIDAK didukung sama sekali di
           // rute ini (hanya di /openai/v1/chat/completions), jadi tetap disertakan hanya
           // untuk kompatibilitas handler custom lain yang mungkin membacanya langsung.
-          sampling_params: { max_tokens: 1200, temperature: 0.1 },
-          max_tokens: 1200,
+          sampling_params: { max_tokens: RUNPOD_ATS_MAX_TOKENS, temperature: 0 },
+          max_tokens: RUNPOD_ATS_MAX_TOKENS,
           chat_template_kwargs: { enable_thinking: false },
           messages: [
-            { role: "system", content: "Anda adalah pakar triase medis emergensi. Balas hanya JSON valid tanpa markdown." },
+            { role: "system", content: RUNPOD_ATS_SYSTEM_INSTRUCTION },
             { role: "user", content: promptText },
           ],
         },

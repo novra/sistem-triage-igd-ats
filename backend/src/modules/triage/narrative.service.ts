@@ -439,7 +439,9 @@ async function extractWithHuggingFace(promptText: string, aiModel?: string) {
 }
 
 async function extractWithRunPod(promptText: string) {
-  const usesOpenAiCompatibleEndpoint = /\/v1\/|\/chat\/completions/i.test(env.customModelUrl);
+  // Base URL resmi RunPod berakhir pada `/openai/v1` tanpa slash penutup.
+  // Kenali bentuk tersebut agar payload OpenAI tidak salah dikirim sebagai job queue.
+  const usesOpenAiCompatibleEndpoint = /\/v1(?:\/|$)|\/chat\/completions/i.test(env.customModelUrl);
   const targetUrl = usesOpenAiCompatibleEndpoint && !/\/chat\/completions\/?$/i.test(env.customModelUrl)
     ? `${env.customModelUrl.replace(/\/$/, "")}/chat/completions`
     : env.customModelUrl;

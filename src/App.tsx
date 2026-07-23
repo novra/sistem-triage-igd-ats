@@ -627,15 +627,15 @@ export default function App() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-surface/85 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <header className="app-header sticky top-0 z-40 border-b border-border/70 bg-surface/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
           <div className="flex min-w-0 items-center gap-2.5 sm:gap-3.5">
-            <div className="app-brand-logo flex items-center justify-center rounded-2xl bg-linear-to-br from-primary to-accent p-3 text-white shadow-lg shadow-primary/25">
+            <div className="app-brand-logo flex items-center justify-center rounded-xl bg-linear-to-br from-primary to-accent p-2.5 text-white shadow-lg shadow-primary/25 sm:rounded-2xl sm:p-3">
               <Activity size={24} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="app-brand-title truncate text-lg font-extrabold tracking-tight text-text">E-Triase IGD ATS</h1>
+                <h1 className="app-brand-title truncate text-base font-extrabold tracking-tight text-text sm:text-lg">E-Triase IGD ATS</h1>
                 <Badge tone="danger" className="hidden sm:inline-flex">BETA</Badge>
               </div>
               <p className="hidden text-sm font-medium text-text-muted sm:block">Sistem Pendukung Keputusan Klinis IGD</p>
@@ -750,7 +750,7 @@ export default function App() {
         </aside>
 
       {/* Main Container */}
-      <main className="min-w-0 px-4 py-5 sm:px-6 sm:py-7">
+      <main className="min-w-0 px-3 py-3 sm:px-6 sm:py-6">
         <AnimatePresence mode="wait">
           <motion.div
             key={view}
@@ -758,7 +758,7 @@ export default function App() {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="grid grid-cols-1 gap-6 pb-36 lg:grid-cols-12 lg:pb-24"
+            className="grid grid-cols-1 gap-4 pb-44 sm:gap-6 lg:grid-cols-12 lg:pb-24"
           >
         {view === "guide" ? (
           <div className="lg:col-span-12">
@@ -804,16 +804,16 @@ export default function App() {
         ) : (
         <>
         <div className="lg:col-span-12">
-          <Card padding="lg" className="relative overflow-hidden">
+          <Card padding="lg" className="triage-intro relative overflow-hidden">
             <div className="pointer-events-none absolute -right-12 -top-16 size-40 rounded-full bg-primary/10 blur-3xl" />
-            <div className="relative flex items-start gap-4">
+            <div className="relative flex items-start gap-3 sm:gap-4">
               <div className="rounded-2xl bg-primary p-3 text-primary-foreground shadow-lg shadow-primary/25">
                 <ClipboardList size={26} />
               </div>
               <div>
                 <p className="text-sm font-bold uppercase tracking-wider text-primary">Ruang Kerja Klinis</p>
                 <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-text">Form Utama Triase ATS</h2>
-                <p className="mt-2 max-w-3xl text-base font-medium text-text-muted">
+                <p className="mt-1 max-w-3xl text-sm font-medium text-text-muted sm:mt-2 sm:text-base">
                   Lengkapi data secara bertahap, tinjau kondisi pasien, lalu jalankan analisis ATS. Setiap langkah dapat dibuka kembali sebelum hasil disimpan.
                 </p>
               </div>
@@ -823,7 +823,7 @@ export default function App() {
 
         {/* AI Engine Selection Panel */}
         <div className="lg:col-span-12">
-          <Card padding="md">
+          <Card padding="md" className="ai-provider-card">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
@@ -868,9 +868,26 @@ export default function App() {
         </div>
 
         {/* Column Left: Pre-loaded Demo presets & step forms (span 8) */}
-        <div className="space-y-6 lg:col-span-8" id="clinical-form-container">
+        <div className="space-y-4 sm:space-y-6 lg:col-span-8" id="clinical-form-container">
 
-          <Card data-density="secondary" padding="sm">
+          <div className="mobile-workspace-status rounded-2xl border border-primary/20 bg-surface p-3 shadow-sm lg:hidden" aria-live="polite">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-primary">Langkah {activeStep + 1} dari {STEPS.length}</p>
+                <p className="truncate text-sm font-extrabold text-text">{STEPS[activeStep].label}</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{Math.round(((activeStep + 1) / STEPS.length) * 100)}%</span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-border" aria-hidden="true">
+              <div className="h-full rounded-full bg-linear-to-r from-primary to-accent transition-all" style={{ width: `${((activeStep + 1) / STEPS.length) * 100}%` }} />
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-2 text-xs font-medium text-text-muted">
+              <span className="truncate">{form.namaPasien || "Pasien belum diisi"}</span>
+              {(isHypoxic || isComa) && <span className="shrink-0 font-bold text-danger">Peringatan klinis aktif</span>}
+            </div>
+          </div>
+
+          <Card data-density="secondary" padding="sm" className="simulation-card">
             <div className="mb-2.5 flex items-center gap-1.5">
               <Microscope size={14} className="text-primary" />
               <span className="text-xs font-bold uppercase tracking-wider text-text-muted">Kasus Simulasi Triase (Uji Coba Cepat)</span>
@@ -922,18 +939,18 @@ export default function App() {
           </div>
 
           {/* Stepper Footer Action Controls */}
-          <div className="flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="step-actions sticky bottom-[5.65rem] z-30 flex gap-2 rounded-2xl border border-border/70 bg-surface/95 p-2 shadow-xl backdrop-blur-xl sm:static sm:flex-row sm:items-center sm:justify-between sm:rounded-none sm:border-x-0 sm:border-b-0 sm:bg-transparent sm:p-0 sm:pt-4 sm:shadow-none">
             <Button variant="outline" size="sm" disabled={activeStep === 0} onClick={() => navigateToMainStep(Math.max(0, activeStep - 1))} leftIcon={<ArrowLeft className="size-3.5" />}>
               Kembali
             </Button>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={handleResetForm} leftIcon={<RotateCcw className="size-4" />} title="Kosongkan formulir dan masukkan pasien baru">
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={handleResetForm} leftIcon={<RotateCcw className="size-4" />} title="Kosongkan formulir dan masukkan pasien baru" className="reset-action px-2 sm:px-3">
                 Data Pasien Baru / Reset
               </Button>
 
               {activeStep < 5 && (
-                <Button variant="primary" size="sm" onClick={() => navigateToMainStep(Math.min(STEPS.length - 1, activeStep + 1))} rightIcon={<ArrowRight className="size-3.5" />}>
+                <Button variant="primary" size="sm" onClick={() => navigateToMainStep(Math.min(STEPS.length - 1, activeStep + 1))} rightIcon={<ArrowRight className="size-3.5" />} className="flex-1 sm:flex-none">
                   Selanjutnya
                 </Button>
               )}
@@ -946,6 +963,7 @@ export default function App() {
                   loading={isClassifying}
                   onClick={handleTriggerAISystem}
                   leftIcon={!isClassifying ? <Wand2 className="size-4" /> : undefined}
+                  className={activeStep >= 4 ? "flex-1 sm:flex-none" : "hidden sm:inline-flex"}
                 >
                   {isClassifying ? "Menganalisis..." : "Analisis ATS dengan AI"}
                 </Button>

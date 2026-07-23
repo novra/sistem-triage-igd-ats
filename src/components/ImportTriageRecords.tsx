@@ -69,8 +69,11 @@ export default function ImportTriageRecords({
   const [loading, setLoading] = useState(false);
   const [parsedRecord, setParsedRecord] = useState<TriageRecord | null>(null);
   const narrativeBaseRef = useRef("");
-  const { isSupported: isVoiceSupported, isListening, start: startListening, stop: stopListening } = useSpeechRecognition(
-    (finalText, interimText) => setNarrative(`${narrativeBaseRef.current}${finalText}${interimText}`),
+  const { isSupported: isVoiceSupported, isListening, error: voiceError, start: startListening, stop: stopListening } = useSpeechRecognition(
+    (finalText, interimText) => {
+      const spokenText = [finalText.trim(), interimText.trim()].filter(Boolean).join(" ");
+      setNarrative(`${narrativeBaseRef.current}${spokenText}`.trimEnd());
+    },
   );
   const engineLabel = aiProvider === "runpod"
     ? "Model Mandiri"
@@ -242,11 +245,17 @@ export default function ImportTriageRecords({
           )}
         </div>
 
+        {voiceError && (
+          <p role="alert" className="rounded-xl border border-danger/25 bg-danger/5 px-3 py-2 text-xs font-semibold text-danger">
+            {voiceError}
+          </p>
+        )}
+
         <div className="relative">
           <TextareaField
             value={narrative}
             onChange={(e) => setNarrative(e.target.value)}
-            disabled={loading}
+            disabled={loading || isListening}
             rows={5}
             placeholder="Contoh: Laki-laki Tn. Budi umur 45 tahun datang digendong keluarga karena mengeluh sesak napas berat disertai demam 38 derajat celsius sejak 2 hari yang lalu..."
           />
